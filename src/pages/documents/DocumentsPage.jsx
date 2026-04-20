@@ -16,8 +16,6 @@ import { formatDate, formatFileSize } from '@/utils/helpers';
 import { FilePlus, FileText, Trash2, Eye, Edit3, Search } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { keepPreviousData } from '@tanstack/react-query';
-
 
 // ── New Document Modal ────────────────────────────────────────────────────────
 function NewDocumentModal({ open, onClose }) {
@@ -39,26 +37,16 @@ function NewDocumentModal({ open, onClose }) {
     mutationFn: ({ data, file }) => documentApi.create(data, file),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
-      toast.success('Document uploaded! Now add signers and place fields.');
+      toast.success(res.message||'Document uploaded! Now add signers and place fields.');
       onClose();
       reset();
       setFile(null);
-      navigate(`/dashboard/documents/${res.data.document.id}/editor`);
+      navigate(`/dashboard/documents/${res.data.id}/editor`);
     },
     onError: (err) => {
-  const errorData = err.response?.data;
-
-  // Try to get field-specific error (best UX)
-  const fileError = errorData?.error?.errors?.file?.[0];
-
-  toast.error(
-    fileError || errorData?.error?.message || 'Upload failed.'
-  );
-}});
-  //   onError: (err) => {
-  //     toast.error(err.response?.data?.error?.message || 'Upload failed.');
-  //   },
-  // });
+      toast.error(err.response?.data?.error?.message || 'Upload failed.');
+    },
+  });
 
   const onSubmit = (data) => {
     if (!file) { toast.error('Please select a file.'); return; }
@@ -99,7 +87,7 @@ function NewDocumentModal({ open, onClose }) {
         )}
 
         <div className="space-y-1">
-          <label className="block text-sm font-medium text-gray-700">Upload File * (PDF Only — max 20MB)</label>
+          <label className="block text-sm font-medium text-gray-700">Upload File * (PDF, DOC, DOCX — max 20MB)</label>
           <div
             className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
               file ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-indigo-300'
@@ -144,7 +132,7 @@ export default function DocumentsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['documents', { search, status, page }],
     queryFn:  () => documentApi.list({ search, status, page, per_page: 10 }),
-    placeholderData: keepPreviousData,
+    keepPreviousData: true,
   });
 
   const deleteMut = useMutation({

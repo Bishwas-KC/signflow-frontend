@@ -11,7 +11,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SIGN_ROLES } from '@/utils/constants';
-import { getInitials } from '@/utils/helpers';
 import { UserPlus, Users, Search, Trash2, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { keepPreviousData } from '@tanstack/react-query';
