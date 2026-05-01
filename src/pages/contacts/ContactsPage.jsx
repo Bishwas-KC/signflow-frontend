@@ -75,9 +75,8 @@ export default function ContactsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['contacts', { search, role, page }],
     queryFn:  () => contactApi.list({ search, role, page, per_page: 12 }),
-    placeholderData: keepPreviousData,
-
-  });
+    placeholderData: keepPreviousData,   // ← same fix
+});
 
   const deleteMut = useMutation({
     mutationFn: (id) => contactApi.delete(id),

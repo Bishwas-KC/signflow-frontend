@@ -15,6 +15,8 @@ export const documentApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(r => r.data);
   },
+  deleteOriginalFile: (id) =>
+    api.delete(`/documents/${id}/original-file`).then(r => r.data),
 
   update: (id, data) =>
     api.put(`/documents/${id}`, data).then(r => r.data),

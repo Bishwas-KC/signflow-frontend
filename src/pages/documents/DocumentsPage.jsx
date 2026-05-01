@@ -141,11 +141,12 @@ export default function DocumentsPage() {
   const [status, setStatus]         = useState('');
   const [page, setPage]             = useState(1);
 
-  const { data, isLoading } = useQuery({
+  // Fix the query:
+const { data, isLoading } = useQuery({
     queryKey: ['documents', { search, status, page }],
     queryFn:  () => documentApi.list({ search, status, page, per_page: 10 }),
-    placeholderData: keepPreviousData,
-  });
+    placeholderData: keepPreviousData,   // ← replaces keepPreviousData: true
+});
 
   const deleteMut = useMutation({
     mutationFn: (id) => documentApi.delete(id),

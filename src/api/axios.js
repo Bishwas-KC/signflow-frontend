@@ -19,35 +19,45 @@ api.interceptors.request.use(
 
 // ── Response interceptor — handle errors globally ────────────────────────────
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const status  = error.response?.status;
-    const message = error.response?.data?.error?.message;
+    (response) => response,
+    (error) => {
+        const status  = error.response?.status;
+        const message = error.response?.data?.error?.message;
 
-    if (status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-      return Promise.reject(error);
+        if (status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            // Only redirect if not already on auth pages
+            if (!window.location.pathname.startsWith('/login')
+                && !window.location.pathname.startsWith('/register')
+                && !window.location.pathname.startsWith('/sign/')) {
+                window.location.href = '/login';
+            }
+            return Promise.reject(error);
+        }
+
+        if (status === 422) {
+            // Validation errors — let the form handle, no toast
+            return Promise.reject(error);
+        }
+
+        if (status === 409 || status === 403 || status === 404) {
+            toast.error(message || 'An error occurred.');
+            return Promise.reject(error);
+        }
+
+        if (status === 410) {
+            // 410 Gone — document expired or link invalid (signing page)
+            return Promise.reject(error);
+        }
+
+        if (status >= 500) {
+            toast.error('Server error. Please try again later.');
+            return Promise.reject(error);
+        }
+
+        return Promise.reject(error);
     }
-
-    if (status === 422) {
-      // Validation errors — let the form handle these, don't toast
-      return Promise.reject(error);
-    }
-
-    if (status === 409 || status === 403 || status === 404) {
-      // Business logic errors — toast + reject
-      toast.error(message || 'An error occurred.');
-      return Promise.reject(error);
-    }
-
-    if (status >= 500) {
-      toast.error('Server error. Please try again later.');
-    }
-
-    return Promise.reject(error);
-  }
 );
 
 export default api;

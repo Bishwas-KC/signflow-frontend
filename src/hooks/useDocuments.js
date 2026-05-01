@@ -48,6 +48,8 @@ export function useDeleteDocument() {
   return useMutation({
     mutationFn: (id) => documentApi.delete(id),
     onSuccess: () => {
+      // In useDeleteDocument, useCancelDocument, useAddSigner, useAddField:
+qc.invalidateQueries({ queryKey: ['document', String(id)] });
       qc.invalidateQueries({ queryKey: ['documents'] });
       qc.invalidateQueries({ queryKey: ['document-stats'] });
       toast.success('Document deleted.');
@@ -56,19 +58,21 @@ export function useDeleteDocument() {
       toast.error(err.response?.data?.error?.message || 'Failed to delete.'),
   });
 }
-
 export function useSendDocument() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id) => documentApi.send(id),
-    onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: ['document', String(id)] });
-      qc.invalidateQueries({ queryKey: ['documents'] });
-      toast.success('Document sent to signers!');
-    },
-    onError: (err) =>
-      toast.error(err.response?.data?.error?.message || 'Failed to send document.'),
-  });
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id) => documentApi.send(id),
+        onSuccess: (_, id) => {
+            // id from mutate() is whatever was passed — could be number or string
+            // queryKey uses ['document', id] where id comes from useParams() as string
+            qc.invalidateQueries({ queryKey: ['document', String(id)] });
+            qc.invalidateQueries({ queryKey: ['documents'] });
+            qc.invalidateQueries({ queryKey: ['document-stats'] });
+            toast.success('Document sent to signers!');
+        },
+        onError: (err) =>
+            toast.error(err.response?.data?.error?.message || 'Failed to send.'),
+    });
 }
 
 export function useCancelDocument() {
@@ -83,12 +87,12 @@ export function useCancelDocument() {
   });
 }
 
-export function useAddSigner(documentId) {
+export function useAddSigner(id) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data) => documentApi.addSigner(documentId, data),
+    mutationFn: (data) => documentApi.addSigner(IDBFactory, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['document', String(documentId)] });
+      qc.invalidateQueries({ queryKey: ['document', String(id)] });
       toast.success('Signer added.');
     },
     onError: (err) =>

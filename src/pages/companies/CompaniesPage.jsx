@@ -241,10 +241,19 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? 'Edit Company' : 'Add Company'} size="lg">
-        <CompanyForm company={modal?.id ? modal : null} onSuccess={onFormSuccess} onClose={() => setModal(null)} />
-      </Modal>
-
+     <Modal
+    open={!!modal}
+    onClose={() => setModal(null)}
+    title={modal?.id ? 'Edit Company' : 'Add Company'}
+    size="lg"
+>
+    <CompanyForm
+        key={modal?.id ?? 'new'}    
+        company={modal?.id ? modal : null}
+        onSuccess={onFormSuccess}
+        onClose={() => setModal(null)}
+    />
+</Modal>
       <ConfirmDialog
         open={!!deleteTarget} onClose={() => setDel(null)}
         onConfirm={() => deleteMut.mutate(deleteTarget.id)}
