@@ -141,20 +141,15 @@ function PageSelector({ signer, signerColor, documentId, totalPages, existingFie
     }
     setApplying(true);
     try {
-      for (const page of selectedPages) {
+      const fieldsToCreate = selectedPages.map(page => {
         // Centre the field horizontally on the page
         const pos_x = Math.round((pageW - SIGNATURE_FIELD.width) / 2);
-
         // Relative Y: place field near the bottom of the page
         const relPosY = pageH - SIGNATURE_FIELD.height - 100;
-
-        // ✅ FIX (Bug 1): pos_y is the ABSOLUTE canvas Y — must account for
-        // PAGE_GAP between pages, not just pageH per page.
-        // Wrong:  pos_y = (page - 1) * pageH + relPosY
-        // Correct: pos_y = (page - 1) * (pageH + PAGE_GAP) + relPosY
+        // Absolute canvas Y: sum of all previous pages' heights + gaps
         const pos_y = (page - 1) * (pageH + PAGE_GAP) + relPosY;
 
-        await documentApi.addField(documentId, {
+        return {
           page,
           pos_x,
           pos_y,
@@ -162,8 +157,15 @@ function PageSelector({ signer, signerColor, documentId, totalPages, existingFie
           height: SIGNATURE_FIELD.height,
           document_signer_id: signer.id,
           required: true,
-        });
+        };
+      });
+
+      if (fieldsToCreate.length === 1) {
+        await documentApi.addField(documentId, fieldsToCreate[0]);
+      } else {
+        await documentApi.bulkAddFields(documentId, fieldsToCreate);
       }
+
       toast.success(`${selectedPages.length} field${selectedPages.length > 1 ? 's' : ''} added for ${signer.name}.`);
       onApplied();
     } catch (err) {
@@ -377,7 +379,7 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const { data: contactsData } = useQuery({
+  const { data: contactsData, isLoading: contactsLoading, isError: contactsError } = useQuery({
     queryKey: ['contacts-picker'],
     queryFn: () => contactApi.list({ per_page: 100 }),
     enabled: open && tab === 'contacts',
@@ -448,7 +450,11 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
         </div>
       ) : (
         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-          {!contactsData?.data?.length ? (
+          {contactsLoading ? (
+            <div className="flex justify-center py-8"><Spinner /></div>
+          ) : contactsError ? (
+            <p className="text-sm text-red-500 text-center py-8">Failed to load contacts.</p>
+          ) : !contactsData?.data?.length ? (
             <p className="text-sm text-gray-400 text-center py-8">No contacts found.</p>
           ) : (
             contactsData.data.map(c => (

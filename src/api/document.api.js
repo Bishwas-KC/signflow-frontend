@@ -50,6 +50,9 @@ export const documentApi = {
   addField: (id, data) =>
     api.post(`/documents/${id}/fields`, data).then(r => r.data),
 
+  bulkAddFields: (id, fields) =>
+    api.post(`/documents/${id}/fields/bulk`, { fields }).then(r => r.data),
+
   updateField: (id, fieldId, data) =>
     api.put(`/documents/${id}/fields/${fieldId}`, data).then(r => r.data),
 

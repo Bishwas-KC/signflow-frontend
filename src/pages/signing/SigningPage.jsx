@@ -394,14 +394,43 @@ export default function SigningPage() {
   // ── Error screens ─────────────────────────────────────────────────────────────
   if (state === STATE.ERROR) {
     const code = error?.response?.data?.error?.code;
-    const map  = {
-      'DOCUMENT_EXPIRED':     { title: 'Document Expired',     message: 'This document has expired and can no longer be signed.', icon: Clock, iconClass: 'text-orange-500', bgClass: 'bg-orange-100' },
-      'ALREADY_SIGNED':       { title: 'Already Signed',       message: 'You have already signed this document.', icon: CheckCircle, iconClass: 'text-green-500', bgClass: 'bg-green-100' },
-      'NOT_YOUR_TURN':        { title: 'Not Your Turn Yet',    message: 'The previous signer has not completed yet. You will receive an email when it is your turn.', icon: AlertCircle, iconClass: 'text-yellow-500', bgClass: 'bg-yellow-100' },
-      'DOCUMENT_NOT_ACTIVE':  { title: 'Document Unavailable', message: 'This document is no longer available for signing.' },
-    };
-    return <ErrorScreen {...(map[code] ?? { title: 'Invalid Link', message: 'This signing link is invalid or has expired.' })} />;
-  }
+    // AFTER:
+const map = {
+  'DOCUMENT_EXPIRED': {
+    title:     'Document Unavailable',
+    message:   'This document is no longer available for signing. The signing period has ended. Please contact the document owner if you believe this is a mistake.',
+    icon:      AlertCircle,
+    iconClass: 'text-amber-500',
+    bgClass:   'bg-amber-50',
+  },
+  'DOCUMENT_NOT_ACTIVE': {
+    title:     'Document Unavailable',
+    message:   'This document is no longer available for signing. It may have been cancelled or already completed.',
+    icon:      AlertCircle,
+    iconClass: 'text-gray-400',
+    bgClass:   'bg-gray-100',
+  },
+  'ALREADY_SIGNED': {
+    title:     'Already Signed',
+    message:   'You have already signed this document. No further action is needed.',
+    icon:      CheckCircle,
+    iconClass: 'text-green-500',
+    bgClass:   'bg-green-100',
+  },
+  'NOT_YOUR_TURN': {
+    title:     'Not Your Turn Yet',
+    message:   'The previous signer has not completed yet. You will receive an email notification when it is your turn to sign.',
+    icon:      AlertCircle,
+    iconClass: 'text-yellow-500',
+    bgClass:   'bg-yellow-100',
+  },
+};
+const screen = map[code] ?? {
+  title:   'Document Unavailable',
+  message: 'This signing link is invalid, expired, or the document is no longer available. Please contact the document sender.',
+};
+return <ErrorScreen {...screen} />;
+     }
 
   if (state === STATE.SIGNED) {
     return (

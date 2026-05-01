@@ -25,9 +25,10 @@ function NewDocumentModal({ open, onClose }) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState(null);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    defaultValues: { title: '', signing_mode: 'sequential', description: '' },
-  });
+ // AFTER:
+const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  defaultValues: { title: '', signing_mode: 'sequential', description: '', expires_at: '' },
+});
 
   const { data: companies } = useQuery({
     queryKey: ['companies-list'],
@@ -61,9 +62,16 @@ function NewDocumentModal({ open, onClose }) {
   // });
 
   const onSubmit = (data) => {
-    if (!file) { toast.error('Please select a file.'); return; }
-    create.mutate({ data, file });
+  if (!file) { toast.error('Please select a file.'); return; }
+
+  // Format expires_at: datetime-local gives "2025-04-20T14:30" → Laravel needs "2025-04-20 14:30:00"
+  const payload = {
+    ...data,
+    expires_at: data.expires_at ? data.expires_at.replace('T', ' ') + ':00' : undefined,
   };
+
+  create.mutate({ data: payload, file });
+};
 
   return (
     <Modal open={open} onClose={onClose} title="Upload New Document">
@@ -98,6 +106,24 @@ function NewDocumentModal({ open, onClose }) {
           </Select>
         )}
 
+{/* ── ADD THIS BLOCK ──────────────────────────────────────────────── */}
+<div className="space-y-1">
+  <label className="block text-sm font-medium text-gray-700">
+    Expiry Date <span className="text-gray-400 font-normal">(optional)</span>
+  </label>
+  <input
+    type="datetime-local"
+    {...register('expires_at')}
+    min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)} // min = 1 hour from now
+    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+  />
+  <p className="text-xs text-gray-400">
+    After this date, signers will no longer be able to open their signing link.
+  </p>
+</div>
+{/* ── END ADD ─────────────────────────────────────────────────────── */}
+
+<Input label="Description (optional)" placeholder="Brief description..." {...register('description')} />
         <div className="space-y-1">
           <label className="block text-sm font-medium text-gray-700">Upload File * (PDF Only — max 20MB)</label>
           <div
@@ -121,7 +147,7 @@ function NewDocumentModal({ open, onClose }) {
           />
         </div>
 
-        <Input label="Description (optional)" placeholder="Brief description..." {...register('description')} />
+        {/* <Input label="Description (optional)" placeholder="Brief description..." {...register('description')} /> */}
 
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
