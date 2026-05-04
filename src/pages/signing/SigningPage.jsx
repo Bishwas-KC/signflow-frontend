@@ -394,8 +394,7 @@ export default function SigningPage() {
   // ── Error screens ─────────────────────────────────────────────────────────────
   if (state === STATE.ERROR) {
     const code = error?.response?.data?.error?.code;
-    // AFTER:
-const map = {
+    const map = {
   'DOCUMENT_EXPIRED': {
     title:     'Document Unavailable',
     message:   'This document is no longer available for signing. The signing period has ended. Please contact the document owner if you believe this is a mistake.',

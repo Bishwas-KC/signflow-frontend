@@ -171,69 +171,79 @@ export default function CompaniesPage() {
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto space-y-8">
       <PageHeader
         title="Companies"
-        description="Manage your companies and their branding."
-        action={<Button onClick={() => setModal('create')}><Plus size={16} />Add Company</Button>}
+        description="Manage your business profiles and branding assets."
+        action={<Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20" onClick={() => setModal('create')}><Plus size={18} />Add Company</Button>}
       />
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner /></div>
+        <div className="flex justify-center py-20"><Spinner size="lg" /></div>
       ) : companies.length === 0 ? (
-        <EmptyState
-          icon={Building2} title="No companies yet"
-          description="Add your company to attach it to documents and use your seal."
-          action={<Button onClick={() => setModal('create')}><Plus size={16} />Add Company</Button>}
-        />
+        <div className="py-20 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-gray-200 dark:border-slate-800">
+          <EmptyState
+            icon={Building2} title="No companies yet"
+            description="Register your company to enable custom branding on your signed documents."
+            action={<Button variant="secondary" className="rounded-xl" onClick={() => setModal('create')}><Plus size={16} />Add Company</Button>}
+          />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {companies.map(c => (
-            <div key={c.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
-              <div className="flex items-start gap-3 mb-4">
+            <div key={c.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 hover:shadow-md transition-all group">
+              <div className="flex items-start gap-4 mb-6">
                 {c.branding?.logo_url ? (
-                  <img src={c.branding.logo_url} alt="Logo" className="w-10 h-10 object-contain rounded-lg border flex-shrink-0" />
+                  <div className="w-12 h-12 bg-white rounded-xl border border-gray-100 p-1 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                    <img src={c.branding.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+                  </div>
                 ) : (
-                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Building2 size={18} className="text-indigo-600" />
+                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Building2 size={24} className="text-indigo-600 dark:text-indigo-400" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm truncate">{c.info?.name}</p>
-                  {c.info?.industry && <p className="text-xs text-gray-500">{c.info.industry}</p>}
-                  {c.user_role && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">{c.user_role}</span>}
+                  <p className="font-bold text-gray-900 dark:text-white text-base truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{c.info?.name}</p>
+                  {c.info?.industry && <p className="text-xs font-bold text-gray-500 dark:text-slate-500 uppercase tracking-widest mt-0.5">{c.info.industry}</p>}
+                  {c.user_role && (
+                    <span className="inline-flex mt-2 text-[10px] font-black uppercase tracking-tighter bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/50">
+                      {c.user_role}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-1.5 mb-4">
+              <div className="space-y-2.5 mb-6 bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
                 {c.contact?.phone && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Phone size={12} className="text-gray-400" />{c.contact.phone}
+                  <div className="flex items-center gap-3 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    <Phone size={14} className="text-gray-400" />{c.contact.phone}
                   </div>
                 )}
                 {c.contact?.email && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Mail size={12} className="text-gray-400" />{c.contact.email}
+                  <div className="flex items-center gap-3 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    <Mail size={14} className="text-gray-400" />{c.contact.email}
                   </div>
                 )}
                 {c.contact?.website && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Globe size={12} className="text-gray-400" />{c.contact.website}
+                  <div className="flex items-center gap-3 text-xs font-medium text-gray-600 dark:text-slate-400">
+                    <Globe size={14} className="text-gray-400" />{c.contact.website}
                   </div>
                 )}
                 {c.address?.city && (
-                  <p className="text-xs text-gray-500">{[c.address.city, c.address.province, c.address.country].filter(Boolean).join(', ')}</p>
+                  <p className="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mt-2">
+                    {[c.address.city, c.address.province, c.address.country].filter(Boolean).join(', ')}
+                  </p>
                 )}
               </div>
 
-              <div className="flex gap-2 pt-4 border-t border-gray-100">
+              <div className="flex gap-3 pt-5 border-t border-gray-50 dark:border-slate-800/50">
                 <button onClick={() => setModal(c)}
-                  className="flex-1 text-xs text-gray-600 hover:text-indigo-600 flex items-center justify-center gap-1.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
-                  <Edit3 size={13} />Edit
+                  className="flex-1 text-xs font-bold text-gray-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all">
+                  <Edit3 size={14} />Edit Profile
                 </button>
                 <button onClick={() => setDel(c)}
-                  className="flex-1 text-xs text-gray-600 hover:text-red-500 flex items-center justify-center gap-1.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
-                  <Trash2 size={13} />Delete
+                  className="flex-1 text-xs font-bold text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-slate-800 transition-all">
+                  <Trash2 size={14} />Remove
                 </button>
               </div>
             </div>
@@ -258,9 +268,9 @@ export default function CompaniesPage() {
         open={!!deleteTarget} onClose={() => setDel(null)}
         onConfirm={() => deleteMut.mutate(deleteTarget.id)}
         loading={deleteMut.isPending}
-        title="Delete company?"
-        message={`"${deleteTarget?.info?.name}" will be permanently deleted.`}
-        confirmLabel="Delete"
+        title="Remove Company?"
+        message={`This will permanently remove "${deleteTarget?.info?.name}" and all associated branding assets. Continue?`}
+        confirmLabel="Confirm Removal"
       />
     </div>
   );

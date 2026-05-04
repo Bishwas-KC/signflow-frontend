@@ -1,6 +1,3 @@
-// Re-export from AuthContext for consistent import paths
-// Usage: import { useAuth } from '@/hooks/useAuth'
-export { useAuth } from '@/context/AuthContext';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactApi } from '@/api/contact.api';
 import toast from 'react-hot-toast';

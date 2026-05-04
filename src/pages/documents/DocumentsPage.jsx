@@ -25,8 +25,7 @@ function NewDocumentModal({ open, onClose }) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState(null);
 
- // AFTER:
-const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
   defaultValues: { title: '', signing_mode: 'sequential', description: '', expires_at: '' },
 });
 
@@ -55,11 +54,8 @@ const { register, handleSubmit, reset, formState: { errors } } = useForm({
   toast.error(
     fileError || errorData?.error?.message || 'Upload failed.'
   );
-}});
-  //   onError: (err) => {
-  //     toast.error(err.response?.data?.error?.message || 'Upload failed.');
-  //   },
-  // });
+    },
+  });
 
   const onSubmit = (data) => {
   if (!file) { toast.error('Please select a file.'); return; }
@@ -106,7 +102,6 @@ const { register, handleSubmit, reset, formState: { errors } } = useForm({
           </Select>
         )}
 
-{/* ── ADD THIS BLOCK ──────────────────────────────────────────────── */}
 <div className="space-y-1">
   <label className="block text-sm font-medium text-gray-700">
     Expiry Date <span className="text-gray-400 font-normal">(optional)</span>
@@ -121,7 +116,6 @@ const { register, handleSubmit, reset, formState: { errors } } = useForm({
     After this date, signers will no longer be able to open their signing link.
   </p>
 </div>
-{/* ── END ADD ─────────────────────────────────────────────────────── */}
 
 <Input label="Description (optional)" placeholder="Brief description..." {...register('description')} />
         <div className="space-y-1">
@@ -146,8 +140,6 @@ const { register, handleSubmit, reset, formState: { errors } } = useForm({
             onChange={e => setFile(e.target.files[0] || null)}
           />
         </div>
-
-        {/* <Input label="Description (optional)" placeholder="Brief description..." {...register('description')} /> */}
 
         <div className="flex gap-3 pt-2">
           <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
@@ -187,26 +179,26 @@ const { data, isLoading } = useQuery({
   const meta = data?.meta || {};
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-8 max-w-7xl mx-auto space-y-6">
       <PageHeader
         title="Documents"
-        description="Manage and track all your documents."
-        action={<Button onClick={() => setNewModal(true)}><FilePlus size={16} />New Document</Button>}
+        description="Manage and track your signature requests."
+        action={<Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20" onClick={() => setNewModal(true)}><FilePlus size={18} />New Document</Button>}
       />
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1 group">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
           <input
             value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search documents…"
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            placeholder="Search documents by title…"
+            className="w-full pl-11 pr-4 py-2.5 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-indigo-500/40 text-gray-900 dark:text-slate-200 shadow-sm transition-all"
           />
         </div>
         <select
           value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="border border-gray-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-sm transition-all"
         >
           <option value="">All statuses</option>
           {Object.entries(STATUS_LABELS).map(([v, l]) => (
@@ -216,105 +208,110 @@ const { data, isLoading } = useQuery({
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-sm">
         {isLoading ? (
-          <div className="flex justify-center py-16"><Spinner /></div>
+          <div className="flex justify-center py-20"><Spinner size="lg" /></div>
         ) : docs.length === 0 ? (
-          <EmptyState
-            icon={FileText}
-            title="No documents found"
-            description={search || status ? 'Try adjusting your filters.' : 'Upload your first document to get started.'}
-            action={!search && !status && <Button onClick={() => setNewModal(true)}><FilePlus size={16} />New Document</Button>}
-          />
+          <div className="py-20">
+            <EmptyState
+              icon={FileText}
+              title="No documents found"
+              description={search || status ? 'Try adjusting your filters.' : 'Upload your first document to get started.'}
+              action={!search && !status && <Button variant="secondary" className="rounded-xl" onClick={() => setNewModal(true)}><FilePlus size={16} />New Document</Button>}
+            />
+          </div>
         ) : (
           <>
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3">Document</th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3 hidden sm:table-cell">Mode</th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3 hidden md:table-cell">Progress</th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3">Status</th>
-                  <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-3 hidden lg:table-cell">Date</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {docs.map(doc => (
-                  <tr key={doc.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FileText size={16} className="text-indigo-500" />
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50 dark:bg-slate-800/50 border-b border-gray-100 dark:border-slate-800">
+                  <tr>
+                    <th className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-8 py-4">Document</th>
+                    <th className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-4 py-4 hidden sm:table-cell">Mode</th>
+                    <th className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-4 py-4 hidden md:table-cell">Progress</th>
+                    <th className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-4 py-4">Status</th>
+                    <th className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest px-4 py-4 hidden lg:table-cell">Created</th>
+                    <th className="px-8 py-4" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
+                  {docs.map(doc => (
+                    <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/30 transition-colors group">
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110">
+                            <FileText size={20} className="text-indigo-500 dark:text-indigo-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[240px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{doc.title}</p>
+                            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 font-medium hidden sm:block">{doc.file?.size_formatted}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate max-w-[200px]">{doc.title}</p>
-                          <p className="text-xs text-gray-500 hidden sm:block">{doc.file?.size_formatted}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 hidden sm:table-cell">
-                      <span className="text-xs capitalize text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
-                        {doc.signing_mode}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 hidden md:table-cell">
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-indigo-500 rounded-full transition-all"
-                            style={{ width: `${doc.progress ?? 0}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500">
-                          {doc.counts?.signed_count ?? 0}/{doc.counts?.total_signers ?? 0}
+                      </td>
+                      <td className="px-4 py-5 hidden sm:table-cell">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-600 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded-md">
+                          {doc.signing_mode}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <Badge className={STATUS_COLORS[doc.status]}>{STATUS_LABELS[doc.status]}</Badge>
-                    </td>
-                    <td className="px-4 py-4 hidden lg:table-cell text-sm text-gray-500">
-                      {formatDate(doc.created_at)}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-1 justify-end">
-                        <Link to={`/dashboard/documents/${doc.id}`} title="View">
-                          <button className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
-                            <Eye size={15} />
-                          </button>
-                        </Link>
-                        {['draft', 'pending'].includes(doc.status) && (
-                          <Link to={`/dashboard/documents/${doc.id}/editor`} title="Edit">
-                            <button className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-colors">
-                              <Edit3 size={15} />
+                      </td>
+                      <td className="px-4 py-5 hidden md:table-cell">
+                        <div className="flex items-center gap-3">
+                          <div className="w-24 h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-500"
+                              style={{ width: `${doc.progress ?? 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                            {doc.counts?.signed_count ?? 0}/{doc.counts?.total_signers ?? 0}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-5">
+                        <Badge className={STATUS_COLORS[doc.status]}>{STATUS_LABELS[doc.status]}</Badge>
+                      </td>
+                      <td className="px-4 py-5 hidden lg:table-cell text-xs font-medium text-gray-500 dark:text-slate-500">
+                        {formatDate(doc.created_at)}
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        <div className="flex items-center gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link to={`/dashboard/documents/${doc.id}`} title="View Details">
+                            <button className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-white dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all">
+                              <Eye size={16} />
                             </button>
                           </Link>
-                        )}
-                        {doc.status !== 'in_progress' && (
-                          <button
-                            onClick={() => setDeleteDoc(doc)}
-                            className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          {['draft', 'pending'].includes(doc.status) && (
+                            <Link to={`/dashboard/documents/${doc.id}/editor`} title="Open Editor">
+                              <button className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-white dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all">
+                                <Edit3 size={16} />
+                              </button>
+                            </Link>
+                          )}
+                          {doc.status !== 'in_progress' && (
+                            <button
+                              onClick={() => setDeleteDoc(doc)}
+                              title="Delete Document"
+                              className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-white dark:hover:bg-slate-800 shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-slate-700 transition-all"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {/* Pagination */}
             {meta.last_page > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
-                <p className="text-sm text-gray-500">
-                  Page {meta.current_page} of {meta.last_page} · {meta.total} total
+              <div className="flex items-center justify-between px-8 py-5 border-t border-gray-100 dark:border-slate-800 bg-gray-50/30 dark:bg-slate-800/30">
+                <p className="text-xs font-bold text-gray-500 dark:text-slate-500 uppercase tracking-widest">
+                  Page {meta.current_page} of {meta.last_page} · {meta.total} Total
                 </p>
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-                  <Button variant="secondary" size="sm" disabled={page >= meta.last_page} onClick={() => setPage(p => p + 1)}>Next</Button>
+                  <Button variant="secondary" size="sm" className="rounded-lg" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
+                  <Button variant="secondary" size="sm" className="rounded-lg" disabled={page >= meta.last_page} onClick={() => setPage(p => p + 1)}>Next</Button>
                 </div>
               </div>
             )}
@@ -327,9 +324,9 @@ const { data, isLoading } = useQuery({
         open={!!deleteDoc} onClose={() => setDeleteDoc(null)}
         onConfirm={() => deleteMut.mutate(deleteDoc.id)}
         loading={deleteMut.isPending}
-        title="Delete document?"
-        message={`"${deleteDoc?.title}" will be permanently deleted.`}
-        confirmLabel="Delete"
+        title="Delete Document?"
+        message={`This action cannot be undone. "${deleteDoc?.title}" and its signature data will be permanently removed.`}
+        confirmLabel="Delete Permanently"
       />
     </div>
   );

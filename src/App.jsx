@@ -17,10 +17,6 @@ import NotFoundPage from '@/pages/NotFoundPage';
 
 
 
-// Add this route BEFORE the GuestRoute wrapper (it must be public):
-<Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
-
-// Route guard — redirect unauthenticated users to /login
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="flex h-screen items-center justify-center"><Spinner size="lg" /></div>;
@@ -42,6 +38,12 @@ export default function App() {
       {/* Public signing page — no auth required */}
       <Route path="/sign/:token" element={<SigningPage />} />
 
+      {/* Google OAuth callback — must be public */}
+      <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+
+      {/* Root redirect */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
       {/* Auth pages */}
       <Route element={<GuestRoute><AuthLayout /></GuestRoute>}>
         <Route path="/login"    element={<LoginPage />} />
@@ -59,11 +61,7 @@ export default function App() {
       </Route>
 
       {/* Fallback */}
-      <Route path="/"   element={<Navigate to="/dashboard" replace />} />
-      <Route path="*"   element={<Navigate to="/dashboard" replace />} />
-
-      // Replace the wildcard route:
-<Route path="*" element={<NotFoundPage />} />
+      <Route path="*"   element={<NotFoundPage />} />
     </Routes>
   );
 }

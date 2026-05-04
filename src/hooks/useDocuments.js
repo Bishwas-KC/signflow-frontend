@@ -1,6 +1,3 @@
-// Re-export from AuthContext for consistent import paths
-// Usage: import { useAuth } from '@/hooks/useAuth'
-export { useAuth } from '@/context/AuthContext';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { keepPreviousData } from '@tanstack/react-query';
 import { documentApi } from '@/api/document.api';
@@ -90,7 +87,7 @@ export function useCancelDocument() {
 export function useAddSigner(id) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data) => documentApi.addSigner(IDBFactory, data),
+    mutationFn: (data) => documentApi.addSigner(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['document', String(id)] });
       toast.success('Signer added.');

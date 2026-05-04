@@ -1,6 +1,5 @@
-// src/pages/documents/DocumentEditorPage.jsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Draggable from 'react-draggable';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -14,7 +13,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 import { Input } from '@/components/ui/Input';
 import { SIGNATURE_FIELD } from '@/utils/constants';
-import { getInitials } from '@/utils/helpers';
+import { getInitials, classNames } from '@/utils/helpers';
 import {
   ArrowLeft,
   UserPlus,
@@ -42,25 +41,21 @@ const SCREEN_DPI = 96;
 const PDF_POINTS_INCH = 72;
 
 const SIGNER_COLORS = [
-  { bg: 'bg-indigo-50', text: 'text-indigo-700', ring: 'ring-indigo-200', dot: 'bg-indigo-600', border: 'border-indigo-200' },
-  { bg: 'bg-emerald-50', text: 'text-emerald-700', ring: 'ring-emerald-200', dot: 'bg-emerald-600', border: 'border-emerald-200' },
-  { bg: 'bg-purple-50', text: 'text-purple-700', ring: 'ring-purple-200', dot: 'bg-purple-600', border: 'border-purple-200' },
-  { bg: 'bg-orange-50', text: 'text-orange-700', ring: 'ring-orange-200', dot: 'bg-orange-600', border: 'border-orange-200' },
-  { bg: 'bg-sky-50', text: 'text-sky-700', ring: 'ring-sky-200', dot: 'bg-sky-600', border: 'border-sky-200' },
-  { bg: 'bg-pink-50', text: 'text-pink-700', ring: 'ring-pink-200', dot: 'bg-pink-600', border: 'border-pink-200' },
+  { bg: 'bg-indigo-50 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', ring: 'ring-indigo-200 dark:ring-indigo-800', dot: 'bg-indigo-600 dark:bg-indigo-500', border: 'border-indigo-200 dark:border-indigo-800' },
+  { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', ring: 'ring-emerald-200 dark:ring-emerald-800', dot: 'bg-emerald-600 dark:bg-emerald-500', border: 'border-emerald-200 dark:border-emerald-800' },
+  { bg: 'bg-purple-50 dark:bg-purple-950/30', text: 'text-purple-700 dark:text-purple-400', ring: 'ring-purple-200 dark:ring-purple-800', dot: 'bg-purple-600 dark:bg-purple-500', border: 'border-purple-200 dark:border-purple-800' },
+  { bg: 'bg-orange-50 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', ring: 'ring-orange-200 dark:ring-orange-800', dot: 'bg-orange-600 dark:bg-orange-500', border: 'border-orange-200 dark:border-orange-800' },
+  { bg: 'bg-sky-50 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400', ring: 'ring-sky-200 dark:ring-sky-800', dot: 'bg-sky-600 dark:bg-sky-500', border: 'border-sky-200 dark:border-sky-800' },
+  { bg: 'bg-pink-50 dark:bg-pink-950/30', text: 'text-pink-700 dark:text-pink-400', ring: 'ring-pink-200 dark:ring-pink-800', dot: 'bg-pink-600 dark:bg-pink-500', border: 'border-pink-200 dark:border-pink-800' },
 ];
 
 // ─── FieldOverlay ──────────────────────────────────────────────────────────────
-// Renders a draggable signature field placeholder on the PDF canvas.
-// `pageRelX` / `pageRelY` are coordinates relative to the top-left of the
-// page div this overlay is contained in — NOT absolute canvas coordinates.
 function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, signerColor, onRemove, onMoved }) {
   const nodeRef = useRef(null);
   const [pos, setPos] = useState({ x: pageRelX, y: pageRelY });
   const w = field.position?.width ?? field.width ?? SIGNATURE_FIELD.width;
   const h = field.position?.height ?? field.height ?? SIGNATURE_FIELD.height;
 
-  // Keep local position in sync when the stored value changes (e.g. after refetch)
   useEffect(() => {
     setPos({ x: pageRelX, y: pageRelY });
   }, [pageRelX, pageRelY]);
@@ -74,7 +69,6 @@ function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, sig
         const newX = Math.round(d.x);
         const newY = Math.round(d.y);
         setPos({ x: newX, y: newY });
-        // Pass page-relative coordinates; handleFieldMoved converts to absolute canvas Y
         onMoved(field.id, newX, newY);
       }}
     >
@@ -84,23 +78,26 @@ function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, sig
         style={{ width: w, zIndex: 20 }}
       >
         <div
-          className={`w-full flex items-center justify-center gap-1.5 text-xs font-semibold rounded-lg border-2 transition-all shadow-sm hover:shadow-md ${signerColor.bg} ${signerColor.text}`}
+          className={classNames(
+            'w-full flex items-center justify-center gap-1.5 text-xs font-black rounded-xl border-2 transition-all shadow-lg hover:scale-105 active:scale-95',
+            signerColor.bg, signerColor.text
+          )}
           style={{
             height: h,
-            borderColor: signerColor.dot.replace('bg-', '#').replace('600', '500'),
+            borderColor: 'currentColor',
           }}
         >
           <PenLine size={13} className="flex-shrink-0" />
-          <span className="truncate max-w-[100px]">Sign — P{field.page}</span>
+          <span className="truncate max-w-[100px] uppercase tracking-tighter">Sign — P{field.page}</span>
         </div>
-        <div className={`text-center truncate px-1 ${signerColor.text} text-[10px] font-semibold leading-tight mt-1`}>
+        <div className={classNames('text-center truncate px-2 text-[10px] font-black leading-tight mt-1.5 uppercase tracking-wide', signerColor.text)}>
           {signerName}
         </div>
         <button
           onMouseDown={e => { e.stopPropagation(); onRemove(field.id); }}
-          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center shadow-md z-30 hover:bg-red-600 transition-all hover:scale-110"
+          className="absolute -top-2.5 -right-2.5 w-6 h-6 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center shadow-xl z-30 hover:bg-red-600 transition-all hover:scale-110 active:scale-90"
         >
-          <X size={10} />
+          <X size={12} strokeWidth={3} />
         </button>
       </div>
     </Draggable>
@@ -108,10 +105,6 @@ function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, sig
 }
 
 // ─── PageSelector ──────────────────────────────────────────────────────────────
-// Lets the user pick which pages to add a signature field to for a given signer.
-// Supports single-page, all-pages, and custom multi-page selection.
-// Users can click "Add fields" multiple times to place additional fields on the
-// same page(s).
 function PageSelector({ signer, signerColor, documentId, totalPages, existingFields, pageW, pageH, onApplied }) {
   const [mode, setMode] = useState('custom');
   const [singlePage, setSinglePage] = useState(1);
@@ -142,17 +135,13 @@ function PageSelector({ signer, signerColor, documentId, totalPages, existingFie
     setApplying(true);
     try {
       const fieldsToCreate = selectedPages.map(page => {
-        // Centre the field horizontally on the page
         const pos_x = Math.round((pageW - SIGNATURE_FIELD.width) / 2);
-        // Relative Y: place field near the bottom of the page
         const relPosY = pageH - SIGNATURE_FIELD.height - 100;
-        // Absolute canvas Y: sum of all previous pages' heights + gaps
-        const pos_y = (page - 1) * (pageH + PAGE_GAP) + relPosY;
 
         return {
           page,
           pos_x,
-          pos_y,
+          pos_y: relPosY,
           width: SIGNATURE_FIELD.width,
           height: SIGNATURE_FIELD.height,
           document_signer_id: signer.id,
@@ -182,20 +171,21 @@ function PageSelector({ signer, signerColor, documentId, totalPages, existingFie
   ];
 
   return (
-    <div className="bg-gradient-to-b from-gray-50 to-white border-t border-gray-100">
-      <div className="p-4 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Assign to pages</p>
+    <div className="bg-gradient-to-b from-gray-50/50 to-white dark:from-slate-800/50 dark:to-slate-900 border-t border-gray-100 dark:border-slate-800">
+      <div className="p-5 space-y-4">
+        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500">Placement Strategy</p>
 
-        <div className="flex gap-1.5">
+        <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl">
           {modeTabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setMode(key)}
-              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-medium transition-all ${
+              className={classNames(
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all',
                 mode === key
-                  ? `${signerColor.dot} text-white shadow-md`
-                  : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-              }`}
+                  ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+              )}
             >
               <Icon size={12} /> {label}
             </button>
@@ -203,111 +193,50 @@ function PageSelector({ signer, signerColor, documentId, totalPages, existingFie
         </div>
 
         {mode === 'single' && (
-          <div className="space-y-2">
-            <p className="text-xs text-gray-600 font-medium">Select a page</p>
-            <div className="flex flex-wrap gap-1.5">
-              {pages.map(p => {
-                const sel = singlePage === p;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setSinglePage(p)}
-                    className={`rounded-lg text-xs font-semibold transition-all ${
-                      sel
-                        ? `${signerColor.dot} text-white shadow-md`
-                        : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
-                    }`}
-                    style={{ width: 32, height: 32 }}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {mode === 'all' && (
-          <div className={`flex items-center gap-3 p-3 rounded-xl ${signerColor.bg} ring-1 ${signerColor.ring}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${signerColor.dot}`}>
-              <CheckCircle size={14} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <p className={`text-xs font-semibold ${signerColor.text}`}>Add to all pages</p>
-              <p className={`text-xs text-gray-600 mt-0.5`}>
-                {totalPages} field{totalPages > 1 ? 's' : ''} will be added
-              </p>
-            </div>
+          <div className="grid grid-cols-6 gap-1.5">
+            {pages.map(p => (
+              <button
+                key={p} onClick={() => setSinglePage(p)}
+                className={classNames(
+                  'rounded-lg text-xs font-bold transition-all h-8',
+                  singlePage === p
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-white dark:bg-slate-800 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700 hover:border-indigo-300'
+                )}
+              >
+                {p}
+              </button>
+            ))}
           </div>
         )}
 
         {mode === 'custom' && (
-          <div className="space-y-2">
-            <p className="text-xs text-gray-600 font-medium">Select pages</p>
-            <div className="flex flex-wrap gap-1.5">
-              {pages.map(p => {
-                const sel = customPages.has(p);
-                return (
-                  <button
-                    key={p}
-                    onClick={() => toggleCustom(p)}
-                    className={`rounded-lg text-xs font-semibold transition-all ${
-                      sel
-                        ? `${signerColor.bg} ${signerColor.text} ring-1 ${signerColor.ring} border-2 ${signerColor.border}`
-                        : 'bg-white text-gray-400 border border-gray-200 hover:bg-gray-50'
-                    }`}
-                    style={{ width: 32, height: 32 }}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-            </div>
-            {customPages.size > 0 && (
-              <p className={`text-xs font-medium ${signerColor.text}`}>
-                {customPages.size} page{customPages.size > 1 ? 's' : ''} selected
-              </p>
-            )}
+          <div className="grid grid-cols-6 gap-1.5">
+            {pages.map(p => (
+              <button
+                key={p} onClick={() => toggleCustom(p)}
+                className={classNames(
+                  'rounded-lg text-xs font-bold transition-all h-8 border-2',
+                  customPages.has(p)
+                    ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-600 text-indigo-700 dark:text-indigo-400'
+                    : 'bg-white dark:bg-slate-800 text-gray-400 dark:text-slate-500 border-gray-100 dark:border-slate-700 hover:border-indigo-200'
+                )}
+              >
+                {p}
+              </button>
+            ))}
           </div>
         )}
 
-        <div className="pt-2 space-y-2">
-          <button
-            onClick={handleApply}
-            disabled={applying || selectedPages.length === 0}
-            className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all ${
-              applying || selectedPages.length === 0
-                ? `bg-gray-200 text-gray-400 cursor-not-allowed`
-                : `${signerColor.dot} text-white shadow-md hover:shadow-lg hover:scale-[1.02]`
-            }`}
-          >
-            {applying ? (
-              <>
-                <Spinner size="sm" />
-                Assigning…
-              </>
-            ) : (
-              <>
-                <Plus size={14} />
-                {selectedPages.length === 0
-                  ? 'Select pages'
-                  : `Add ${selectedPages.length} field${selectedPages.length > 1 ? 's' : ''}`}
-              </>
-            )}
-          </button>
-
-          {existingCount > 0 && (
-            <div className={`flex items-center gap-2 p-2.5 rounded-lg ${signerColor.bg} border border-gray-200`}>
-              <CheckCircle size={12} className={signerColor.dot.replace('bg-', 'text-')} />
-              <span className={`text-xs font-semibold ${signerColor.text}`}>
-                {existingCount} field{existingCount > 1 ? 's' : ''} placed
-              </span>
-              <span className={`text-xs ${signerColor.text} opacity-60 ml-auto`}>
-                Click above to add more
-              </span>
-            </div>
-          )}
-        </div>
+        <Button
+          onClick={handleApply}
+          disabled={applying || selectedPages.length === 0}
+          className="w-full rounded-xl shadow-lg shadow-indigo-500/10 py-3"
+          size="sm"
+        >
+          {applying ? <Spinner size="xs" /> : <Plus size={14} />}
+          {selectedPages.length === 0 ? 'Select Pages' : `Place ${selectedPages.length} Fields`}
+        </Button>
       </div>
     </div>
   );
@@ -319,39 +248,38 @@ function SignerCard({ signer, signerIndex, signingMode, documentId, totalPages, 
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className={`rounded-xl overflow-hidden ring-1 transition-all ${
-      signerFields.length > 0 ? `${color.ring} shadow-sm` : 'border-gray-200 shadow-xs'
-    }`}>
-      <div className={`flex items-center gap-3 px-4 py-3.5 ${signerFields.length > 0 ? color.bg : 'bg-white'}`}>
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${color.dot} text-white shadow-sm`}>
+    <div className={classNames(
+      'rounded-2xl overflow-hidden border transition-all duration-300',
+      signerFields.length > 0 
+        ? 'border-indigo-200 dark:border-indigo-500/30 shadow-md shadow-indigo-500/5' 
+        : 'border-gray-200 dark:border-slate-800 shadow-sm'
+    )}>
+      <div className={classNames('flex items-center gap-3 px-5 py-4', signerFields.length > 0 ? color.bg : 'bg-white dark:bg-slate-900')}>
+        <div className={classNames('w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-sm flex-shrink-0 shadow-md', color.dot)}>
           {getInitials(signer.name)}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            {signingMode === 'sequential' && signer.signing_order && (
-              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 ${color.dot} text-[9px] shadow-sm`}>
-                {signer.signing_order}
+            {signingMode === 'sequential' && (
+              <span className="text-[10px] font-black bg-white dark:bg-slate-800 text-gray-400 border border-gray-100 dark:border-slate-700 px-1.5 py-0.5 rounded-md shadow-xs">
+                #{signer.signing_order}
               </span>
             )}
-            <p className={`text-sm font-semibold truncate ${signerFields.length > 0 ? color.text : 'text-gray-900'}`}>
+            <p className={classNames('text-sm font-bold truncate leading-none', signerFields.length > 0 ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-white')}>
               {signer.name}
             </p>
           </div>
-          <p className={`text-xs truncate ${signerFields.length > 0 ? color.text + ' opacity-70' : 'text-gray-500'}`}>
-            {signer.email}
-          </p>
+          <p className="text-[10px] truncate text-gray-500 dark:text-slate-500 mt-1.5 font-medium">{signer.email}</p>
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
-            expanded ? `${color.bg} ${color.text}` : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-          }`}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
         >
-          <ChevronDown size={14} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <ChevronDown size={14} className={classNames('transition-transform duration-300', expanded && 'rotate-180')} />
         </button>
         <button
           onClick={() => onRemove(signer.id)}
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-300 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
         >
           <Trash2 size={14} />
         </button>
@@ -400,78 +328,62 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
 
   return (
     <Modal open={open} onClose={() => { onClose(); reset(); }} title="Add Signer" size="sm">
-      <div className="flex p-1 bg-gray-100 rounded-xl mb-4">
+      <div className="flex p-1 bg-gray-100 dark:bg-slate-800 rounded-xl mb-6">
         <button
           onClick={() => setTab('manual')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-            tab === 'manual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={classNames(
+            'flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all',
+            tab === 'manual' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400'
+          )}
         >
-          Enter manually
+          Manual
         </button>
         <button
           onClick={() => setTab('contacts')}
-          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
-            tab === 'contacts' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-          }`}
+          className={classNames(
+            'flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all',
+            tab === 'contacts' ? 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-slate-400'
+          )}
         >
-          From contacts
+          Directory
         </button>
       </div>
 
       {tab === 'manual' ? (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Full name *</label>
-            <Input
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Jane Doe"
-              autoFocus
-              className="focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Email address *</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="jane@example.com"
-              className="focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <Button className="w-full py-2.5 font-semibold" loading={saving}
-            disabled={!name.trim() || !email.trim()}
-            onClick={() => add({ name: name.trim(), email: email.trim() })}
-          >
+        <div className="space-y-5">
+          <Input label="Signer Name" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Jane Doe" autoFocus />
+          <Input label="Email Address" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
+          <Button className="w-full rounded-xl py-3" loading={saving} disabled={!name.trim() || !email.trim()} onClick={() => add({ name: name.trim(), email: email.trim() })}>
             <Plus size={14} /> Add Signer
           </Button>
         </div>
       ) : (
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
           {contactsLoading ? (
-            <div className="flex justify-center py-8"><Spinner /></div>
+            <div className="flex justify-center py-12"><Spinner /></div>
           ) : contactsError ? (
-            <p className="text-sm text-red-500 text-center py-8">Failed to load contacts.</p>
+            <p className="text-xs font-bold text-red-500 text-center py-8">Failed to load directory.</p>
           ) : !contactsData?.data?.length ? (
-            <p className="text-sm text-gray-400 text-center py-8">No contacts found.</p>
+            <div className="text-center py-12">
+              <UserPlus size={32} className="mx-auto text-gray-200 dark:text-slate-800 mb-3" />
+              <p className="text-xs font-bold text-gray-400 dark:text-slate-500">Your directory is empty</p>
+            </div>
           ) : (
             contactsData.data.map(c => (
-              <div
+              <button
                 key={c.id}
-                className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-all hover:shadow-sm"
                 onClick={() => add({ name: c.full_name, email: c.email, contact_id: c.id })}
+                className="w-full flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all text-left group"
               >
-                <div className="w-9 h-9 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 text-xs font-bold flex-shrink-0">
+                <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-sm shadow-sm border border-gray-100 dark:border-slate-700 group-hover:scale-110 transition-transform">
                   {c.initials}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{c.full_name}</p>
-                  <p className="text-xs text-gray-500 truncate">{c.email}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{c.full_name}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-slate-500 truncate mt-0.5">{c.email}</p>
                 </div>
-                <Plus size={14} className="text-gray-300" />
-              </div>
+                <Plus size={14} className="text-gray-300 dark:text-slate-700 group-hover:text-indigo-500" />
+              </button>
             ))
           )}
         </div>
@@ -502,42 +414,47 @@ function SendPanel({ documentId, onSent }) {
     setSending(true);
     try {
       await documentApi.send(documentId);
-      toast.success('Document sent!');
+      toast.success('Document sent successfully!');
       onSent();
     } catch (err) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to send.');
+      toast.error(err?.response?.data?.error?.message || 'Failed to send document.');
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div className="space-y-3">
-      <Button variant="secondary" size="sm" className="w-full py-2.5 font-semibold" loading={validating} onClick={runValidate}>
-        <CheckCircle size={14} /> Validate document
+    <div className="space-y-4">
+      <Button variant="secondary" className="w-full rounded-xl py-3 border-gray-200 dark:border-slate-800 shadow-sm" loading={validating} onClick={runValidate}>
+        <CheckCircle size={16} /> Run Validation
       </Button>
       {result && (
-        <div
-          className={`rounded-xl p-3.5 text-xs font-medium ${
-            result.valid
-              ? 'bg-green-50 text-green-800 ring-1 ring-green-200'
-              : 'bg-red-50 text-red-800 ring-1 ring-red-200'
-          }`}
-        >
+        <div className={classNames(
+          'rounded-2xl p-5 border animate-fade-in',
+          result.valid 
+            ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-400' 
+            : 'bg-red-50/50 dark:bg-red-950/20 border-red-100 dark:border-red-900/50 text-red-900 dark:text-red-400'
+        )}>
           {result.valid ? (
-            <p className="flex items-center gap-2"><CheckCircle size={14} /> Ready to send!</p>
+            <div className="flex items-center gap-3">
+              <CheckCircle size={20} className="text-emerald-500" />
+              <p className="text-xs font-black uppercase tracking-widest leading-none">Ready to Publish</p>
+            </div>
           ) : (
-            <div>
-              <p className="mb-2 flex items-center gap-2"><AlertCircle size={14} /> Issues found:</p>
-              <ul className="space-y-1 pl-6 list-disc">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <AlertCircle size={20} className="text-red-500" />
+                <p className="text-xs font-black uppercase tracking-widest leading-none">Issues Found</p>
+              </div>
+              <ul className="space-y-1.5 pl-8 list-disc text-[10px] font-bold opacity-80 uppercase tracking-tight">
                 {result.errors.map((e, i) => <li key={i}>{e}</li>)}
               </ul>
             </div>
           )}
         </div>
       )}
-      <Button size="sm" className="w-full py-2.5 font-semibold" disabled={!result?.valid} loading={sending} onClick={runSend}>
-        <Send size={14} /> Send to signers
+      <Button size="lg" className="w-full rounded-xl py-4 shadow-xl shadow-indigo-500/20" disabled={!result?.valid} loading={sending} onClick={runSend}>
+        <Send size={18} /> Send to Signers
       </Button>
     </div>
   );
@@ -551,9 +468,6 @@ function guessSizeLabel(w, h) {
   if (near(w, 1123) && near(h, 1587)) return 'A3';
   if (near(w, 816) && near(h, 1056)) return 'Letter';
   if (near(w, 816) && near(h, 1344)) return 'Legal';
-  if (near(w, 1123) && near(h, 794)) return 'A4 Landscape';
-  if (near(w, 794) && near(h, 559)) return 'A5 Landscape';
-  if (near(w, 1056) && near(h, 816)) return 'Letter Landscape';
   return `${w}×${h}px`;
 }
 
@@ -588,7 +502,7 @@ export default function DocumentEditorPage() {
     try {
       const page = await pdfProxy.getPage(1);
       const viewport = page.getViewport({ scale: 1 });
-      const scale = SCREEN_DPI / PDF_POINTS_INCH; // 96/72 — converts PDF pts → screen px
+      const scale = SCREEN_DPI / PDF_POINTS_INCH;
 
       const detectedW = Math.round(viewport.width * scale);
       const detectedH = Math.round(viewport.height * scale);
@@ -601,24 +515,20 @@ export default function DocumentEditorPage() {
     }
   }, []);
 
-  // ✅ FIX (Bug 2): When a field is dragged, onMoved delivers page-relative X/Y.
-  // We must convert back to an absolute canvas Y by adding the cumulative offset
-  // for all preceding pages INCLUDING the PAGE_GAP between them.
-  //
-  // Wrong:  absoluteY = (page - 1) * pageH        + pageRelY
-  // Correct: absoluteY = (page - 1) * (pageH + PAGE_GAP) + pageRelY
   const handleFieldMoved = useCallback(async (fieldId, pageRelX, pageRelY, pageIdx) => {
     const page = pageIdx + 1;
-    // Absolute canvas Y: sum of all previous pages' heights + gaps
-    const absoluteY = (page - 1) * (pageH + PAGE_GAP) + pageRelY;
 
     try {
-      await documentApi.updateField(id, fieldId, { pos_x: pageRelX, pos_y: absoluteY });
+      await documentApi.updateField(id, fieldId, { 
+        pos_x: pageRelX, 
+        pos_y: pageRelY,
+        page
+      });
       refetch();
     } catch {
       toast.error('Failed to save position.');
     }
-  }, [id, refetch, pageH]);
+  }, [id, refetch]);
 
   const handleRemoveField = useCallback(async (fieldId) => {
     try {
@@ -640,33 +550,11 @@ export default function DocumentEditorPage() {
     }
   }, [id, refetch]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 mx-auto bg-indigo-100 rounded-full flex items-center justify-center">
-            <Spinner size="lg" />
-          </div>
-          <p className="text-sm font-medium text-gray-600">Loading editor…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!doc) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center space-y-3">
-          <AlertCircle size={32} className="mx-auto text-gray-400" />
-          <p className="text-gray-600 font-medium">Document not found.</p>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <div className="flex flex-col items-center justify-center h-screen gap-4 dark:bg-slate-950"><Spinner size="lg" /><p className="text-xs font-black uppercase tracking-widest text-gray-400 animate-pulse">Launching Editor...</p></div>;
+  if (!doc) return <div className="flex items-center justify-center h-screen dark:bg-slate-950 text-gray-500 font-bold uppercase tracking-widest">Document not found.</div>;
 
   const signers = doc.signers || [];
   const fields = doc.fields || [];
-
   const fieldsBySigner = signers.reduce((acc, s) => {
     acc[s.id] = fields.filter(f => f.document_signer_id === s.id);
     return acc;
@@ -675,229 +563,108 @@ export default function DocumentEditorPage() {
   const pdfUrl = doc.file?.pdf_url ?? doc.file?.original_url;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <div className="w-96 flex-shrink-0 flex flex-col overflow-hidden bg-white border-r border-gray-200 shadow-sm">
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 mb-3 transition-colors"
-          >
-            <ArrowLeft size={14} /> Back to documents
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      {/* Sidebar */}
+      <div className="w-96 flex-shrink-0 flex flex-col overflow-hidden bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-800 shadow-sm z-20">
+        <div className="px-8 py-8 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-gray-50/50 to-white dark:from-slate-900 dark:to-slate-800/50">
+          <button onClick={() => navigate(`/dashboard/documents/${id}`)} className="flex items-center gap-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 mb-6 uppercase tracking-widest group">
+            <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" /> Back to details
           </button>
-          <h1 className="text-lg font-bold text-gray-900 truncate mb-2" title={doc.title}>
-            {doc.title}
-          </h1>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="indigo" size="sm" className="capitalize font-semibold">
-              {doc.signing_mode}
-            </Badge>
-            <span className="text-xs font-medium text-gray-500">{doc.status_label}</span>
-            {fields.length > 0 && (
-              <Badge variant="emerald" size="sm" className="ml-auto font-semibold">
-                {fields.length} field{fields.length > 1 ? 's' : ''}
-              </Badge>
-            )}
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white truncate leading-none tracking-tight" title={doc.title}>{doc.title}</h1>
+          <div className="flex items-center gap-3 mt-4">
+            <Badge variant="indigo" size="xs" className="font-black uppercase tracking-tighter shadow-sm">{doc.signing_mode}</Badge>
+            <span className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">{doc.status_label}</span>
           </div>
         </div>
 
-        {/* PDF info */}
-        <div className="px-6 py-3 flex items-center gap-2 border-b border-gray-100 bg-gray-50">
-          <FileText size={14} className="text-indigo-600 flex-shrink-0" />
-          <span className="text-xs font-medium text-gray-700">
-            {totalPages > 1
-              ? `${totalPages} pages detected`
-              : pdfUrl ? 'Loading PDF…' : 'No PDF found'}
+        <div className="px-8 py-4 flex items-center gap-3 border-b border-gray-50 dark:border-slate-800/50 bg-gray-50/20 dark:bg-slate-900/50">
+          <FileText size={14} className="text-gray-400 dark:text-slate-600" />
+          <span className="text-[10px] font-black text-gray-500 dark:text-slate-400 uppercase tracking-widest">
+            {totalPages} Pages · {pageSizeLabel}
           </span>
-          {pageSizeLabel && (
-            <Badge variant="gray" size="sm" className="ml-auto font-semibold">
-              {pageSizeLabel}
-            </Badge>
-          )}
         </div>
 
-        {/* Signers list */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-thin scrollbar-thumb-gray-100 dark:scrollbar-thumb-slate-800">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Signers</p>
-            <Button variant="ghost" size="sm" onClick={() => setSignerModal(true)} className="hover:bg-indigo-50">
-              <UserPlus size={13} /> Add
-            </Button>
+            <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-600">Assign Signers</p>
+            <button onClick={() => setSignerModal(true)} className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-all">
+              <UserPlus size={14} /> Add Signer
+            </button>
           </div>
 
           {signers.length === 0 ? (
-            <Button
-              variant="outline"
-              className="w-full py-8 text-gray-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all font-semibold"
-              onClick={() => setSignerModal(true)}
-            >
-              <UserPlus size={20} className="mx-auto mb-2 opacity-60" />
-              Add your first signer
-            </Button>
+            <div className="py-12 px-6 text-center bg-gray-50/50 dark:bg-slate-800/20 rounded-[2rem] border border-dashed border-gray-200 dark:border-slate-800">
+              <UserPlus size={32} className="mx-auto mb-4 text-gray-200 dark:text-slate-800" />
+              <p className="text-xs font-bold text-gray-400 dark:text-slate-500 max-w-[140px] mx-auto">Add at least one signer to start placing fields</p>
+              <Button size="sm" variant="secondary" className="mt-6 rounded-xl" onClick={() => setSignerModal(true)}>Add Signer</Button>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {signers.map((signer, i) => (
-                <SignerCard
-                  key={signer.id}
-                  signer={signer}
-                  signerIndex={i}
-                  signingMode={doc.signing_mode}
-                  documentId={id}
-                  totalPages={totalPages}
-                  signerFields={fieldsBySigner[signer.id] || []}
-                  pageW={pageW}
-                  pageH={pageH}
-                  onRemove={handleRemoveSigner}
-                  onApplied={refetch}
-                />
+                <SignerCard key={signer.id} signer={signer} signerIndex={i} signingMode={doc.signing_mode} documentId={id} totalPages={totalPages} signerFields={fieldsBySigner[signer.id] || []} pageW={pageW} pageH={pageH} onRemove={handleRemoveSigner} onApplied={refetch} />
               ))}
             </div>
           )}
         </div>
 
-        {/* Send panel */}
-        <div className="p-5 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-          <SendPanel
-            documentId={id}
-            onSent={() => {
-              queryClient.invalidateQueries({ queryKey: ['documents'] });
-              navigate(`/dashboard/documents/${id}`);
-            }}
-          />
+        <div className="p-8 border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <SendPanel documentId={id} onSent={() => { queryClient.invalidateQueries(['documents']); navigate(`/dashboard/documents/${id}`); }} />
         </div>
       </div>
 
-      {/* ── PDF Canvas ──────────────────────────────────────────────────────── */}
-      <div
-        className="flex-1 overflow-auto flex justify-center py-8 px-8"
-        style={{
-          backgroundImage: 'radial-gradient(circle, #e5e7eb 0.5px, transparent 0.5px)',
-          backgroundSize: '20px 20px',
-          backgroundColor: '#f9fafb',
-        }}
-      >
-        <div style={{ width: pageW }}>
-          {/* Toolbar */}
-          <div className="flex items-center justify-between px-5 py-3 rounded-xl mb-6 bg-white border border-gray-200 shadow-sm">
-            <p className="text-xs font-medium text-gray-600">Drag fields to reposition · click a signer to add more fields</p>
-            {fields.length > 0 && (
-              <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                {fields.length} field{fields.length > 1 ? 's' : ''} placed
-              </span>
-            )}
+      {/* Canvas */}
+      <div className="flex-1 overflow-auto flex justify-center py-12 px-12 bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative">
+        <div style={{ width: pageW }} className="animate-fade-in relative z-10">
+          <div className="flex items-center justify-between px-8 py-4 rounded-3xl mb-10 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
+            <p className="text-[10px] font-black text-gray-500 dark:text-slate-500 uppercase tracking-widest">DRAG FIELDS TO REPOSITION · CLICK SIGNERS TO ASSIGN</p>
+            {fields.length > 0 && <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-full uppercase tracking-tighter shadow-sm">{fields.length} Field{fields.length > 1 ? 's' : ''} Placed</span>}
           </div>
 
-          <div className="relative">
+          <div className="relative group">
             {pdfUrl ? (
-              <Document
-                file={pdfUrl}
-                onLoadSuccess={onDocumentLoadSuccess}
-                onLoadError={() => toast.error('Could not load PDF preview.')}
-                loading={
-                  <div className="flex items-center justify-center bg-white rounded-xl shadow-lg" style={{ height: pageH }}>
-                    <div className="text-center space-y-3">
-                      <Spinner size="md" />
-                      <p className="text-xs font-medium text-gray-500">Loading PDF…</p>
-                    </div>
-                  </div>
-                }
-              >
+              <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess} loading={<div className="flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-slate-800" style={{ height: pageH }}><Spinner size="lg" /><p className="text-[10px] font-black text-gray-400 mt-4 uppercase tracking-widest animate-pulse">Rendering PDF...</p></div>}>
                 {Array.from({ length: totalPages }, (_, i) => (
-                  <div key={i} style={{ marginBottom: i < totalPages - 1 ? PAGE_GAP : 0 }}>
-                    <Page
-                      pageNumber={i + 1}
-                      width={pageW}
-                      renderAnnotationLayer={false}
-                      renderTextLayer={false}
-                    />
+                  <div key={i} className="relative mb-4 group/page">
+                    <div className="shadow-2xl shadow-slate-300/50 dark:shadow-none transition-shadow duration-500 group-hover/page:shadow-indigo-500/10">
+                      <Page pageNumber={i + 1} width={pageW} renderAnnotationLayer={false} renderTextLayer={false} className="rounded-xl overflow-hidden" />
+                    </div>
+                    {/* Field overlays for this page */}
+                    {fields.filter(f => Number(f.page) === i + 1).map(field => {
+                      const signerIdx = signers.findIndex(s => s.id === field.document_signer_id);
+                      const color = SIGNER_COLORS[Math.max(0, signerIdx) % SIGNER_COLORS.length];
+                      const signer = signers[signerIdx];
+                      const absX = field.pos_x ?? 0;
+                      const pageRelY = field.pos_y ?? 0;
+
+                      return (
+                        <div key={field.id} className="absolute inset-0 pointer-events-none z-30">
+                          <div style={{ pointerEvents: 'auto', position: 'relative', width: '100%', height: '100%' }}>
+                            <FieldOverlay field={field} pageRelX={absX} pageRelY={pageRelY} pageW={pageW} pageH={pageH} signerName={signer?.name ?? 'Signer'} signerColor={color} onRemove={handleRemoveField} onMoved={(fId, x, y) => handleFieldMoved(fId, x, y, i)} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {i < totalPages - 1 && (
+                      <div className="absolute left-0 right-0 h-[8px] bg-slate-100 dark:bg-slate-800 flex items-center justify-center pointer-events-none" style={{ top: pageH }}>
+                        <span className="text-[8px] font-black text-gray-400 dark:text-slate-600 bg-white dark:bg-slate-950 px-2 py-0.5 rounded-full uppercase">Page {i + 2}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </Document>
             ) : (
-              <div className="flex items-center justify-center bg-white rounded-xl shadow-lg" style={{ height: pageH }}>
-                <p className="text-sm font-medium text-gray-500">No PDF file found.</p>
+              <div className="flex items-center justify-center bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-slate-800" style={{ height: pageH }}>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">No Document Preview Available</p>
               </div>
             )}
-
-            {/* ── Field overlays ─────────────────────────────────────────────
-             * Each field is placed inside a page-sized absolutely positioned div
-             * so the Draggable `bounds="parent"` constrains dragging within that page.
-             *
-             * Coordinate mapping:
-             *   absX    = pos_x  (page-relative, no conversion needed)
-             *   absY    = pos_y  (absolute canvas Y, includes PAGE_GAP offsets)
-             *   pageOffset = pageIdx * (pageH + PAGE_GAP)
-             *   pageRelY   = absY - pageOffset   (Y within this page div)
-             */}
-            {fields.map(field => {
-              const pageIdx = (field.page ?? 1) - 1;
-              const signerIdx = signers.findIndex(s => s.id === field.document_signer_id);
-              const color = SIGNER_COLORS[Math.max(0, signerIdx) % SIGNER_COLORS.length];
-              const signer = signers[signerIdx];
-
-              const absX = field.position?.x ?? field.pos_x ?? 0;
-              const absY = field.position?.y ?? field.pos_y ?? 0;
-
-              // Cumulative canvas offset for this page (px), including PAGE_GAP
-              const pageOffset = pageIdx * (pageH + PAGE_GAP);
-              const pageRelY = absY - pageOffset;
-
-              return (
-                <div
-                  key={field.id}
-                  className="absolute pointer-events-none"
-                  style={{
-                    top: pageOffset,
-                    left: 0,
-                    width: pageW,
-                    height: pageH,
-                    zIndex: 15,
-                  }}
-                >
-                  <div style={{ pointerEvents: 'auto', position: 'relative', width: '100%', height: '100%' }}>
-                    <FieldOverlay
-                      field={field}
-                      pageRelX={absX}
-                      pageRelY={pageRelY}
-                      pageW={pageW}
-                      pageH={pageH}
-                      signerName={signer?.name ?? 'Signer'}
-                      signerColor={color}
-                      onRemove={handleRemoveField}
-                      // Pass pageIdx so handleFieldMoved can reconstruct the absolute Y
-                      onMoved={(fId, x, y) => handleFieldMoved(fId, x, y, pageIdx)}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Page dividers */}
-            {totalPages > 1 && Array.from({ length: totalPages - 1 }, (_, i) => (
-              <div
-                key={i}
-                className="absolute left-0 right-0 pointer-events-none flex items-center justify-end pr-3"
-                style={{
-                  top: (i + 1) * pageH + i * PAGE_GAP,
-                  height: PAGE_GAP,
-                  zIndex: 12,
-                  background: 'linear-gradient(to right, transparent, #d1d5db, transparent)',
-                }}
-              >
-                <span className="text-[10px] font-bold text-gray-500 bg-white px-2 rounded">Page {i + 2}</span>
-              </div>
-            ))}
           </div>
         </div>
+        
+        {/* Decorative background grid */}
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #6366f1 0.4px, transparent 0.4px)', backgroundSize: '40px 40px', opacity: 0.05 }} />
       </div>
 
-      <AddSignerModal
-        open={signerModal}
-        onClose={() => setSignerModal(false)}
-        documentId={id}
-        onAdded={refetch}
-      />
+      <AddSignerModal open={signerModal} onClose={() => setSignerModal(false)} documentId={id} onAdded={refetch} />
     </div>
   );
 }

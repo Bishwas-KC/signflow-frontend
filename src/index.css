@@ -1,22 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap');
-
 @layer base {
-  *, *::before, *::after { box-sizing: border-box; }
+  *, *::before, *::after { 
+    box-sizing: border-box;
+    @apply transition-colors duration-300;
+  }
 
   body {
-    @apply font-sans text-gray-900 antialiased;
+    @apply font-sans text-gray-900 dark:text-slate-200 antialiased;
     background-color: #f9fafb;
   }
 
+  .dark body {
+    background-color: #020617;
+  }
+
   /* Scrollbar */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-gray-300 rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-gray-400; }
+  ::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-slate-800 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-gray-400 dark:bg-slate-700; }
 }
 
 @layer utilities {

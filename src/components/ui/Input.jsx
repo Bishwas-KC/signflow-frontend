@@ -5,23 +5,23 @@ export const Input = forwardRef(function Input(
   { label, error, hint, className = '', ...props }, ref
 ) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 ml-0.5">{label}</label>
       )}
       <input
         ref={ref}
         {...props}
         className={classNames(
-          'block w-full rounded-lg border px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition',
+          'block w-full rounded-xl border bg-white dark:bg-slate-900 px-4 py-2.5 text-sm placeholder-gray-400 dark:placeholder-slate-500 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm',
           error
-            ? 'border-red-400 focus:ring-red-400'
-            : 'border-gray-300 focus:border-indigo-400',
+            ? 'border-red-400 focus:ring-red-400 dark:border-red-500/50'
+            : 'border-gray-200 dark:border-slate-700 focus:border-indigo-400 focus:ring-indigo-500/20 dark:focus:border-indigo-500/50',
           className
         )}
       />
-      {error && <p className="text-xs text-red-500">{error}</p>}
-      {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
+      {error && <p className="text-xs font-medium text-red-500 mt-1 ml-0.5">{error}</p>}
+      {hint && !error && <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 ml-0.5">{hint}</p>}
     </div>
   );
 });
@@ -30,22 +30,24 @@ export const Select = forwardRef(function Select(
   { label, error, children, className = '', ...props }, ref
 ) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {label && (
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 ml-0.5">{label}</label>
       )}
       <select
         ref={ref}
         {...props}
         className={classNames(
-          'block w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white transition',
-          error ? 'border-red-400' : 'border-gray-300',
+          'block w-full rounded-xl border bg-white dark:bg-slate-900 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 text-gray-900 dark:text-slate-200 transition-all duration-200 shadow-sm',
+          error 
+            ? 'border-red-400 focus:ring-red-400 dark:border-red-500/50' 
+            : 'border-gray-200 dark:border-slate-700 focus:border-indigo-400 focus:ring-indigo-500/20 dark:focus:border-indigo-500/50',
           className
         )}
       >
         {children}
       </select>
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs font-medium text-red-500 mt-1 ml-0.5">{error}</p>}
     </div>
   );
 });
