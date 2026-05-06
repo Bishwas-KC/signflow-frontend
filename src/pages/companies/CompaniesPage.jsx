@@ -157,7 +157,7 @@ export default function CompaniesPage() {
     mutationFn: (id) => companyApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success('Company deleted.');
+      toast.success('Company profile removed.');
       setDel(null);
     },
   });
@@ -171,78 +171,86 @@ export default function CompaniesPage() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-10 max-w-7xl mx-auto space-y-10 animate-fade-in">
       <PageHeader
-        title="Companies"
-        description="Manage your business profiles and branding assets."
-        action={<Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20" onClick={() => setModal('create')}><Plus size={18} />Add Company</Button>}
+        title="Business Profiles"
+        description="Manage your business profiles, branding assets, and corporate signature settings."
+        action={<Button size="lg" className="rounded-2xl shadow-xl shadow-indigo-500/20 px-8" onClick={() => setModal('create')}><Plus size={20} />Add Company</Button>}
       />
 
       {isLoading ? (
-        <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+        <div className="flex flex-col items-center justify-center py-32 gap-4">
+          <Spinner size="lg" />
+          <p className="text-sm font-black text-gray-400 uppercase tracking-widest animate-pulse">Loading profiles...</p>
+        </div>
       ) : companies.length === 0 ? (
-        <div className="py-20 bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-gray-200 dark:border-slate-800">
+        <div className="py-24 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-slate-800">
           <EmptyState
             icon={Building2} title="No companies yet"
-            description="Register your company to enable custom branding on your signed documents."
-            action={<Button variant="secondary" className="rounded-xl" onClick={() => setModal('create')}><Plus size={16} />Add Company</Button>}
+            description="Register your company to enable custom branding on your signed documents and manage team workflows."
+            action={<Button variant="subtle" className="rounded-2xl px-10" onClick={() => setModal('create')}><Plus size={16} />Create Company Profile</Button>}
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {companies.map(c => (
-            <div key={c.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 p-6 hover:shadow-md transition-all group">
-              <div className="flex items-start gap-4 mb-6">
+            <div key={c.id} className="bg-white dark:bg-slate-900 rounded-[2rem] border border-gray-100 dark:border-slate-800 p-8 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative">
+              <div className="flex items-start gap-5 mb-8">
                 {c.branding?.logo_url ? (
-                  <div className="w-12 h-12 bg-white rounded-xl border border-gray-100 p-1 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+                  <div className="w-16 h-16 bg-white rounded-2xl border border-gray-100 p-2 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
                     <img src={c.branding.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
                   </div>
                 ) : (
-                  <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Building2 size={24} className="text-indigo-600 dark:text-indigo-400" />
+                  <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform text-indigo-500">
+                    <Building2 size={32} />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-gray-900 dark:text-white text-base truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{c.info?.name}</p>
-                  {c.info?.industry && <p className="text-xs font-bold text-gray-500 dark:text-slate-500 uppercase tracking-widest mt-0.5">{c.info.industry}</p>}
+                  <p className="font-black text-gray-900 dark:text-white text-xl truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight">{c.info?.name}</p>
+                  {c.info?.industry && <p className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1.5">{c.info.industry}</p>}
                   {c.user_role && (
-                    <span className="inline-flex mt-2 text-[10px] font-black uppercase tracking-tighter bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-800/50">
+                    <Badge size="xs" variant="indigo" className="mt-3 px-3 py-0.5">
                       {c.user_role}
-                    </span>
+                    </Badge>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-2.5 mb-6 bg-gray-50 dark:bg-slate-800/50 rounded-xl p-4">
+              <div className="space-y-4 mb-8 bg-gray-50/50 dark:bg-slate-800/30 rounded-3xl p-6 border border-gray-50 dark:border-slate-800/50">
                 {c.contact?.phone && (
-                  <div className="flex items-center gap-3 text-xs font-medium text-gray-600 dark:text-slate-400">
-                    <Phone size={14} className="text-gray-400" />{c.contact.phone}
+                  <div className="flex items-center gap-4 text-xs font-bold text-gray-600 dark:text-slate-400">
+                    <div className="w-8 h-8 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-center shadow-sm"><Phone size={14} className="text-gray-400" /></div>
+                    {c.contact.phone}
                   </div>
                 )}
                 {c.contact?.email && (
-                  <div className="flex items-center gap-3 text-xs font-medium text-gray-600 dark:text-slate-400">
-                    <Mail size={14} className="text-gray-400" />{c.contact.email}
+                  <div className="flex items-center gap-4 text-xs font-bold text-gray-600 dark:text-slate-400">
+                    <div className="w-8 h-8 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-center shadow-sm"><Mail size={14} className="text-gray-400" /></div>
+                    {c.contact.email}
                   </div>
                 )}
                 {c.contact?.website && (
-                  <div className="flex items-center gap-3 text-xs font-medium text-gray-600 dark:text-slate-400">
-                    <Globe size={14} className="text-gray-400" />{c.contact.website}
+                  <div className="flex items-center gap-4 text-xs font-bold text-gray-600 dark:text-slate-400">
+                    <div className="w-8 h-8 bg-white dark:bg-slate-900 rounded-lg flex items-center justify-center shadow-sm"><Globe size={14} className="text-gray-400" /></div>
+                    <span className="truncate">{c.contact.website.replace(/^https?:\/\//, '')}</span>
                   </div>
                 )}
                 {c.address?.city && (
-                  <p className="text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wide mt-2">
-                    {[c.address.city, c.address.province, c.address.country].filter(Boolean).join(', ')}
-                  </p>
+                  <div className="pt-2 border-t border-gray-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-gray-300 dark:text-slate-600 uppercase tracking-widest text-center">
+                      {[c.address.city, c.address.province, c.address.country].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
                 )}
               </div>
 
-              <div className="flex gap-3 pt-5 border-t border-gray-50 dark:border-slate-800/50">
+              <div className="flex gap-2 pt-6 border-t border-gray-50 dark:border-slate-800">
                 <button onClick={() => setModal(c)}
-                  className="flex-1 text-xs font-bold text-gray-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all">
-                  <Edit3 size={14} />Edit Profile
+                  className="flex-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all">
+                  <Edit3 size={14} />Settings
                 </button>
                 <button onClick={() => setDel(c)}
-                  className="flex-1 text-xs font-bold text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 flex items-center justify-center gap-2 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-slate-800 transition-all">
+                  className="flex-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-slate-800 transition-all">
                   <Trash2 size={14} />Remove
                 </button>
               </div>
@@ -254,7 +262,7 @@ export default function CompaniesPage() {
      <Modal
     open={!!modal}
     onClose={() => setModal(null)}
-    title={modal?.id ? 'Edit Company' : 'Add Company'}
+    title={modal?.id ? 'Company Settings' : 'Register New Company'}
     size="lg"
 >
     <CompanyForm
@@ -268,9 +276,9 @@ export default function CompaniesPage() {
         open={!!deleteTarget} onClose={() => setDel(null)}
         onConfirm={() => deleteMut.mutate(deleteTarget.id)}
         loading={deleteMut.isPending}
-        title="Remove Company?"
-        message={`This will permanently remove "${deleteTarget?.info?.name}" and all associated branding assets. Continue?`}
-        confirmLabel="Confirm Removal"
+        title="Remove Company Profile?"
+        message={`This will permanently remove "${deleteTarget?.info?.name}" and all associated branding assets. This action is not reversible.`}
+        confirmLabel="Remove Profile"
       />
     </div>
   );
