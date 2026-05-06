@@ -644,7 +644,6 @@ export default function SigningPage() {
           </div>
         </div>
       </main>
-
       {/* Footer */}
       <footer className="py-6 text-center border-t border-gray-200 bg-white">
         <p className="text-xs text-gray-500">Powered by Signflow</p>

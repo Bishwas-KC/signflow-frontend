@@ -198,12 +198,17 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
 
   const signerFields = allFields.filter(f => f.document_signer_id === signer.id);
   const signedPages = [...new Set(signerFields.map(f => f.page))].sort((a, b) => a - b);
+  const initialized = useRef(false);
 
   useEffect(() => {
-    if (mode === 'select' && signedPages.length > 0) {
-      setPageInput(signedPages.join(', '));
+    if (mode === 'select' && open && !initialized.current) {
+      setPageInput(signedPages.length > 0 ? signedPages.join(', ') : '');
+      initialized.current = true;
     }
-  }, [mode, signedPages]);
+    if (!open) {
+      initialized.current = false;
+    }
+  }, [mode, open]);
 
   const getDropdownLabel = () => {
     if (signerFields.length === 0) return 'Sign required on pages';
