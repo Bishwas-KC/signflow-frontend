@@ -23,13 +23,24 @@ export default function GoogleCallbackPage() {
       return;
     }
 
+    // Get sign token from sessionStorage (stored before redirect)
+    const signToken = sessionStorage.getItem('sign_token');
+    sessionStorage.removeItem('sign_token'); // Clean up
+
     // Exchange code for token via Laravel backend
     import('@/api/auth.api').then(({ authApi }) => {
       authApi.googleCallback(code)
         .then(res => {
-          saveSession(res.data.user, res.data.token);
-          toast.success(`Welcome, ${res.data.user.name}!`);
-          navigate('/dashboard', { replace: true });
+          const userData = res.data.data || res.data;
+          saveSession(userData.user, userData.token);
+          toast.success(`Welcome, ${userData.user.name}!`);
+
+          // If coming from signing page, redirect back to signing
+          if (signToken) {
+            navigate(`/sign/${signToken}/sign`, { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
         })
         .catch(() => {
           toast.error('Google authentication failed. Please try again.');

@@ -112,16 +112,39 @@ function parsePageInput(input, totalPages) {
   const errors = [];
 
   for (const part of parts) {
-    const num = parseInt(part, 10);
-    if (isNaN(num) || num < 1) {
-      errors.push(`"${part}" is not a valid page number`);
-      continue;
+    // Support ranges like "1-5" or "3-7"
+    if (part.includes('-') && !part.includes(' ')) {
+      const [startStr, endStr] = part.split('-').map(s => s.trim());
+      const start = parseInt(startStr, 10);
+      const end = parseInt(endStr, 10);
+      
+      if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
+        errors.push(`"${part}" is not a valid page range`);
+        continue;
+      }
+      
+      let rangeValid = true;
+      for (let i = start; i <= end; i++) {
+        if (i > totalPages) {
+          errors.push(`Page ${i} does not exist (document has ${totalPages} page${totalPages > 1 ? 's' : ''})`);
+          rangeValid = false;
+          break;
+        }
+        pages.add(i);
+      }
+      if (!rangeValid) continue;
+    } else {
+      const num = parseInt(part, 10);
+      if (isNaN(num) || num < 1) {
+        errors.push(`"${part}" is not a valid page number`);
+        continue;
+      }
+      if (num > totalPages) {
+        errors.push(`Page ${num} does not exist (document has ${totalPages} page${totalPages > 1 ? 's' : ''})`);
+        continue;
+      }
+      pages.add(num);
     }
-    if (num > totalPages) {
-      errors.push(`Page ${num} does not exist (document has ${totalPages} page${totalPages > 1 ? 's' : ''})`);
-      continue;
-    }
-    pages.add(num);
   }
 
   return { pages: [...pages].sort((a, b) => a - b), errors };
@@ -239,10 +262,57 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
 
     setApplying(true);
     try {
+      // Step 1: Remove ALL existing fields for this signer
+      const existingFields = allFields.filter(f => f.document_signer_id === signer.id);
+      
+      // Security: Validate that pages don't have overlapping fields for same signer
+      const duplicatePages = pages.filter((p, i) => pages.indexOf(p) !== i);
+      if (duplicatePages.length > 0) {
+        toast.error(`Duplicate pages detected: ${[...new Set(duplicatePages)].join(', ')}. Please fix your input.`);
+        setApplying(false);
+        return;
+      }
+      
+      // Warn user if replacing many fields (UX improvement)
+      if (existingFields.length > 0) {
+        const confirmed = window.confirm(
+          `This will remove ${existingFields.length} existing field${existingFields.length > 1 ? "s" : ""} for ${signer.name} and create new ones on pages ${pages.join(", ")}. Continue?`
+        );
+        if (!confirmed) {
+          setApplying(false);
+          return;
+        }
+      }
+
+      if (existingFields.length > 0) {
+        toast.loading(`Removing ${existingFields.length} old field${existingFields.length > 1 ? 's' : ''}...`, { id: 'removing' });
+        
+        // Remove fields in parallel for efficiency
+        const removePromises = existingFields.map(f => 
+          documentApi.removeField(documentId, f.id).catch(err => {
+            console.warn('Failed to remove field', f.id, err);
+            return null; // Continue with others even if one fails
+          })
+        );
+        
+        const results = await Promise.all(removePromises);
+        const removedCount = results.filter(r => r !== null).length;
+        
+        toast.dismiss('removing');
+        
+        if (removedCount < existingFields.length) {
+          toast.error(`Removed ${removedCount} of ${existingFields.length} fields. Some may have failed.`);
+        }
+      }
+
+      // Step 2: Create new fields for selected pages
       const fieldsToCreate = [];
 
       for (const page of pages) {
-        const existingOnPage = allFields.filter(f => Number(f.page) === page);
+        // Only check for overlaps with fields from OTHER signers (not the one we just removed)
+        const existingOnPage = allFields.filter(f => 
+          Number(f.page) === page && f.document_signer_id !== signer.id
+        );
         const pos = findNonOverlappingPosition(pageW, pageH, SIGNATURE_FIELD.width, SIGNATURE_FIELD.height, existingOnPage);
 
         if (!pos) {
@@ -262,17 +332,22 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
       }
 
       if (fieldsToCreate.length === 0) {
-        toast.error('Could not place any fields — all pages are full');
+        toast.error('Could not place any fields — all selected pages are full');
         return;
       }
 
+      // Step 3: Add new fields (bulk if multiple, single if one)
       if (fieldsToCreate.length === 1) {
         await documentApi.addField(documentId, fieldsToCreate[0]);
       } else {
         await documentApi.bulkAddFields(documentId, fieldsToCreate);
       }
 
-      toast.success(`${fieldsToCreate.length} signature field${fieldsToCreate.length > 1 ? 's' : ''} added for ${signer.name}`);
+      toast.success(
+        `Replaced fields: ${fieldsToCreate.length} signature field${fieldsToCreate.length > 1 ? 's' : ''} now on pages ${pages.join(', ')} for ${signer.name}`,
+        { duration: 4000 }
+      );
+      
       setPageInput('');
       setMode(null);
       setOpen(false);

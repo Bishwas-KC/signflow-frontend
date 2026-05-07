@@ -9,9 +9,28 @@ export const signApi = {
     api.get(`/sign/${token}`).then(r => r.data),
 
   // ── Auth-protected ───────────────────────────────────────────────────────────
-  // Submit signature. Requires auth + email match (enforced by backend).
-  submit: (token, signatureData) =>
-    api.post(`/sign/${token}/submit`, { signature_data: signatureData }).then(r => r.data),
+  // Step 1: Submit signature → sends OTP to signer's email
+  // signatureData can be:
+  //   - base64 data URI string (for draw/type) → method: 'draw'
+  //   - File object (for upload) → multipart/form-data with method: 'upload'
+  submit: (token, signatureData) => {
+    if (signatureData instanceof File) {
+      const formData = new FormData();
+      formData.append('method', 'upload');
+      formData.append('signature_file', signatureData);
+      // Do NOT set Content-Type manually — browser will set it with correct boundary
+      return api.post(`/sign/${token}/submit`, formData).then(r => r.data);
+    }
+    // Draw or type signature (base64 data URI)
+    return api.post(`/sign/${token}/submit`, {
+      method: 'draw',
+      signature_data: signatureData,
+    }).then(r => r.data);
+  },
+
+  // Step 2: Verify OTP → completes the signature
+  verifyOtp: (token, otp) =>
+    api.post(`/sign/${token}/verify-otp`, { otp }).then(r => r.data),
 
   // Decline to sign. Requires auth + email match (enforced by backend).
   decline: (token, reason = '') =>

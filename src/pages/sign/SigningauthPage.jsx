@@ -91,10 +91,11 @@ function LoginForm({ signerEmail, onSuccess }) {
     if (!password) { toast.error('Please enter your password.'); return; }
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email: signerEmail, password }).then(r => r.data);
-      storeAuth(res.data);
+      const res = await api.post('/auth/login', { email: signerEmail, password });
+      const data = res.data.data || res.data;
+      storeAuth(data);
       toast.success('Logged in successfully!');
-      onSuccess(res.data.user);
+      onSuccess(data.user);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Invalid email or password.');
     } finally {
@@ -170,10 +171,11 @@ function RegisterForm({ signerEmail, signerName, onSuccess }) {
         email: signerEmail,
         password,
         password_confirmation: confirm,
-      }).then(r => r.data);
-      storeAuth(res.data);
+      });
+      const data = res.data.data || res.data;
+      storeAuth(data);
       toast.success('Account created! Welcome to Signflow.');
-      onSuccess(res.data.user);
+      onSuccess(data.user);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.response?.data?.errors?.email?.[0];
       toast.error(msg || 'Registration failed.');
@@ -264,7 +266,7 @@ export default function SigningAuthPage() {
 
         // If signer has already signed/declined, redirect accordingly
         if (data.signer.status === 'signed') {
-          navigate(`/sign/${token}/complete`, { replace: true });
+          navigate(`/sign/${token}/thank-you`, { replace: true });
           return;
         }
         if (data.signer.status === 'declined') {
@@ -293,7 +295,7 @@ export default function SigningAuthPage() {
       localStorage.removeItem('user');
       return;
     }
-    navigate(`/sign/${token}`, { replace: true });
+    navigate(`/sign/${token}/sign`, { replace: true });
   };
 
   // ── Google OAuth ──────────────────────────────────────────────────────────
@@ -301,6 +303,8 @@ export default function SigningAuthPage() {
     setGoogleLoading(true);
     try {
       const res = await api.get('/auth/google/redirect').then(r => r.data);
+      // Store token in sessionStorage so callback can retrieve it
+      sessionStorage.setItem('sign_token', token);
       // Open Google OAuth in same tab; callback will handle auth
       window.location.href = res.data.redirect_url;
     } catch {

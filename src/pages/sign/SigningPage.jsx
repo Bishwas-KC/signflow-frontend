@@ -260,6 +260,7 @@ function TypeTab({ signerName, onSignatureReady }) {
 // ── Upload Tab ─────────────────────────────────────────────────────────────────
 function UploadTab({ savedSignature, onSignatureReady }) {
   const [preview, setPreview] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const inputRef = useRef(null);
 
   const handleFile = e => {
@@ -271,18 +272,21 @@ function UploadTab({ savedSignature, onSignatureReady }) {
     const reader = new FileReader();
     reader.onload = ev => {
       setPreview(ev.target.result);
-      onSignatureReady(ev.target.result);
+      setUploadedFile(file); // Store the File object for submission
+      onSignatureReady(file); // Pass File object to parent
     };
     reader.readAsDataURL(file);
   };
 
   const useSaved = () => {
     setPreview(savedSignature);
-    onSignatureReady(savedSignature);
+    setUploadedFile(null);
+    onSignatureReady(savedSignature); // Pass base64 string for saved signature
   };
 
   const clear = () => {
     setPreview(null);
+    setUploadedFile(null);
     onSignatureReady(null);
     if (inputRef.current) inputRef.current.value = '';
   };
@@ -472,10 +476,15 @@ export default function SigningPage() {
   const [declining,      setDeclining]      = useState(false);
   const [showDecline,    setShowDecline]    = useState(false);
 
+  // ── OTP flow ────────────────────────────────────────────────────────
+  const [otpSent,        setOtpSent]        = useState(false);
+  const [otp,            setOtp]            = useState("");
+  const [verifying,      setVerifying]      = useState(false);
+  const [otpError,       setOtpError]       = useState("");
   // ── Auth guard: redirect if not logged in ─────────────────────────────────
   useEffect(() => {
     if (!localStorage.getItem('token')) {
-      navigate(`/sign/${token}/auth`, { replace: true });
+      navigate(`/sign/${token}`, { replace: true });
     }
   }, [token]);
 
@@ -499,7 +508,7 @@ export default function SigningPage() {
 
           // If already signed, go to thank you
           if (data.signer.status === 'signed') {
-            navigate(`/sign/${token}/complete`, { replace: true });
+            navigate(`/sign/${token}/thank-you`, { replace: true });
             return;
           }
         } else {
@@ -515,31 +524,34 @@ export default function SigningPage() {
     })();
   }, [token]);
 
-  // ── Load PDF as blob (with auth token) ───────────────────────────────────
-  useEffect(() => {
-    const pdfUrl = signingData?.document?.pdf_url;
-    if (!pdfUrl) return;
-    let alive = true;
-    let objectUrl = null;
+   // ── Load PDF as blob (with auth token) ───────────────────────────────────
+   const [pdfError, setPdfError] = useState(false);
+   useEffect(() => {
+     const pdfUrl = signingData?.document?.pdf_url;
+     if (!pdfUrl) return;
+     let alive = true;
+     let objectUrl = null;
 
-    (async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const res   = await fetch(pdfUrl, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        if (!res.ok) throw new Error('Failed to load PDF');
-        const blob  = await res.blob();
-        if (!alive) return;
-        objectUrl   = URL.createObjectURL(blob);
-        setPdfBlobUrl(objectUrl);
-      } catch {
-        // PDF load failure is non-fatal; user can still sign
-      }
-    })();
+     (async () => {
+       try {
+         const token = localStorage.getItem('token');
+         const res   = await fetch(pdfUrl, {
+           headers: token ? { Authorization: `Bearer ${token}` } : {},
+         });
+         if (!res.ok) throw new Error('Failed to load PDF');
+         const blob  = await res.blob();
+         if (!alive) return;
+         objectUrl   = URL.createObjectURL(blob);
+         setPdfBlobUrl(objectUrl);
+         setPdfError(false);
+       } catch (err) {
+         console.error('PDF load failed:', err);
+         setPdfError(true);
+       }
+     })();
 
-    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [signingData?.document?.pdf_url]);
+     return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+   }, [signingData?.document?.pdf_url]);
 
   // ── PDF size detection ────────────────────────────────────────────────────
   const onPdfLoad = useCallback(async (pdfProxy) => {
@@ -563,19 +575,40 @@ export default function SigningPage() {
     }, {});
   }, [signingData]);
 
-  // ── Submit ────────────────────────────────────────────────────────────────
+  // ── Submit → Step1: Send OTP ─────────────────────────────
   const handleSubmit = async () => {
     if (!signatureData) { toast.error('Please create your signature first.'); return; }
+
+    // Step2: Verify OTP
+    if (otpSent) {
+      if (!otp || otp.length < 4) { toast.error('Please enter the OTP sent to your email.'); return; }
+      setVerifying(true);
+      setOtpError('');
+      try {
+        await signApi.verifyOtp(token, otp);
+        toast.success('Document signed successfully!');
+        navigate(`/sign/${token}/thank-you`);
+      } catch (err) {
+        const msg = err?.response?.data?.message || 'Invalid or expired OTP.';
+        setOtpError(msg);
+        toast.error(msg);
+      } finally {
+        setVerifying(false);
+      }
+      return;
+    }
+
+    // Step1: Submit signature → sends OTP to signer's email
     setSubmitting(true);
     try {
-      // Optionally save to account
-      if (saveToAccount) {
+      // Optionally save to account (only for draw/type, not file upload)
+      if (saveToAccount && !(signatureData instanceof File)) {
         await signApi.saveSignature(signatureData).catch(() => {});
       }
 
       await signApi.submit(token, signatureData);
-      toast.success('Document signed successfully!');
-      navigate(`/sign/${token}/complete`);
+      setOtpSent(true);
+      toast.success('OTP sent to your email! Please check your inbox.');
     } catch (err) {
       const code = err?.response?.data?.error?.code;
       if (code === 'EMAIL_MISMATCH') {
@@ -588,13 +621,14 @@ export default function SigningPage() {
     }
   };
 
+
   // ── Decline ───────────────────────────────────────────────────────────────
   const handleDecline = async (reason) => {
     setDeclining(true);
     try {
       await signApi.decline(token, reason);
       toast.success('You have declined this document.');
-      navigate(`/sign/${token}/complete?declined=1`);
+      navigate(`/sign/${token}/thank-you?declined=1`);
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to decline.');
     } finally {
@@ -821,6 +855,12 @@ export default function SigningPage() {
                     </Document>
                   </div>
                 </div>
+              ) : pdfError ? (
+                <div style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
+                  <AlertTriangle size={32} style={{ marginBottom: 12, color: '#f59e0b' }} />
+                  <p style={{ fontSize: 13, marginBottom: 8 }}>PDF preview unavailable</p>
+                  <p style={{ fontSize: 11, color: '#334155' }}>You can still sign the document below</p>
+                </div>
               ) : (
                 <div style={{ padding: 40, textAlign: 'center', color: '#334155' }}>
                   <FileText size={32} style={{ marginBottom: 12 }} />
@@ -956,23 +996,60 @@ export default function SigningPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button
               onClick={handleSubmit}
-              disabled={submitting || !signatureData}
+              disabled={(otpSent ? verifying : submitting) || !signatureData}
               style={{
                 width: '100%', padding: '14px 0', borderRadius: 12,
                 fontSize: 15, fontWeight: 700, color: 'white',
-                background: submitting || !signatureData
+                background: (otpSent ? verifying : submitting) || !signatureData
                   ? '#1e293b'
-                  : 'linear-gradient(135deg,#059669,#10b981)',
+                  : otpSent
+                    ? 'linear-gradient(135deg,#6366f1,#8b5cf6)'
+                    : 'linear-gradient(135deg,#059669,#10b981)',
                 border: 'none',
-                cursor: submitting || !signatureData ? 'not-allowed' : 'pointer',
+                cursor: (otpSent ? verifying : submitting) || !signatureData ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', transition: 'all 0.2s',
-                boxShadow: !submitting && signatureData ? '0 0 28px rgba(16,185,129,0.35)' : 'none',
+                boxShadow: (!otpSent && !submitting && signatureData) ? '0 0 28px rgba(16,185,129,0.35)' : 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
             >
-              <CheckCircle size={16} />
-              {submitting ? 'Signing document…' : 'Sign Document'}
+              {otpSent ? (
+                verifying ? 'Verifying…' : 'Verify OTP'
+              ) : (
+                <>
+                  <CheckCircle size={16} />
+                  {submitting ? 'Signing document…' : 'Sign Document'}
+                </>
+              )}
             </button>
+
+            {/* OTP Input - shown after submitting signature */}
+            {otpSent && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+                <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', margin: 0 }}>
+                  OTP sent to <strong style={{ color: '#e2e8f0' }}>{signingData?.signer?.email}</strong>
+                </p>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="Enter OTP"
+                  maxLength={6}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '12px 16px', borderRadius: 10,
+                    fontSize: 18, fontWeight: 700, color: '#e2e8f0',
+                    background: '#1e293b', border: `1px solid ${otpError ? '#ef4444' : '#334155'}`,
+                    outline: 'none', fontFamily: 'inherit', textAlign: 'center',
+                    letterSpacing: '0.5em',
+                  }}
+                />
+                {otpError && (
+                  <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', margin: 0 }}>
+                    {otpError}
+                  </p>
+                )}
+              </div>
+            )}
 
             <button
               onClick={() => setShowDecline(true)}

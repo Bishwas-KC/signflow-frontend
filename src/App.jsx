@@ -10,7 +10,9 @@ import DocumentEditorPage  from '@/pages/documents/DocumentEditorPage';
 import DocumentDetailPage  from '@/pages/documents/DocumentDetailPage';
 import ContactsPage   from '@/pages/contacts/ContactsPage';
 import CompaniesPage  from '@/pages/companies/CompaniesPage';
-import SigningPage    from '@/pages/signing/SigningPage';
+import SigningPage    from '@/pages/sign/SigningPage';
+import SigningAuthPage from '@/pages/sign/SigningauthPage';
+import ThankYouPage    from '@/pages/sign/ThankYouPage';
 import { Spinner }   from '@/components/ui/Spinner';
 import GoogleCallbackPage from '@/pages/auth/GoogleCallbackPage';
 import NotFoundPage from '@/pages/NotFoundPage';
@@ -35,8 +37,10 @@ function GuestRoute({ children }) {
 export default function App() {
   return (
     <Routes>
-      {/* Public signing page — no auth required */}
-      <Route path="/sign/:token" element={<SigningPage />} />
+      {/* Public signing page — auth gate (login/register) then signing */}
+      <Route path="/sign/:token" element={<SigningAuthPage />} />
+      <Route path="/sign/:token/sign" element={<SigningPage />} />
+      <Route path="/sign/:token/thank-you" element={<ThankYouPage />} />
 
       {/* Google OAuth callback — must be public */}
       <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
