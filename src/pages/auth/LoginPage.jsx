@@ -4,33 +4,55 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/context/AuthContext';
+import { authApi } from '@/api/auth.api';
 import { Button } from '@/components/ui/Button';
 import { Input }  from '@/components/ui/Input';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Mail } from 'lucide-react';
 
 const schema = z.object({
-  email:    z.string().email('Enter a valid email'),
+  email: z.string().email('Enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
 });
 
 export default function LoginPage() {
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+  
   const [serverError, setServerError] = useState('');
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(schema),
   });
 
+  const handleResendVerification = async () => {
+    try {
+      await authApi.resendVerification(userEmail);
+      toast.success('Verification email sent!');
+    } catch {
+      toast.error('Failed to resend email.');
+    }
+  };
+
   const onSubmit = async (data) => {
     setServerError('');
+    setNeedsVerification(false);
+    setUserEmail(data.email);
+
     try {
       await login(data);
       navigate('/dashboard');
     } catch (err) {
-      setServerError(
-        err.response?.data?.error?.message || 'Login failed. Please try again.'
-      );
+      const code = err?.response?.data?.error?.code;
+      const message = err?.response?.data?.error?.message;
+
+      if (code === 'EMAIL_NOT_VERIFIED') {
+        setNeedsVerification(true);
+        setServerError(message || 'Please verify your email before logging in.');
+      } else {
+        setServerError(message || 'Invalid email or password.');
+      }
     }
   };
 
@@ -41,7 +63,6 @@ export default function LoginPage() {
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1.5 font-medium">Please enter your details to sign in.</p>
       </div>
 
-      {/* Google OAuth */}
       <button
         onClick={loginWithGoogle}
         className="w-full flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-[0.98]"
@@ -73,20 +94,48 @@ export default function LoginPage() {
             {...register('password')}
           />
           <div className="flex justify-end">
-            <Link to="/forgot-password" size="xs" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+            <Link to="/forgot-password" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
               Forgot password?
             </Link>
           </div>
         </div>
 
-        {serverError && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl px-4 py-3 flex items-center gap-2">
-            <AlertCircle size={14} />
-            {serverError}
+        {needsVerification ? (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/30 rounded-xl p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/50 rounded-full flex items-center justify-center flex-shrink-0">
+                <Mail size={16} className="text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-amber-800 dark:text-amber-300">Email not verified</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                  {serverError}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              className="w-full py-2 text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 rounded-lg transition-colors"
+            >
+              Resend verification email
+            </button>
           </div>
+        ) : (
+          serverError && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl px-4 py-3 flex items-center gap-2">
+              <AlertCircle size={14} />
+              {serverError}
+            </div>
+          )
         )}
 
-        <Button type="submit" className="w-full rounded-xl shadow-lg shadow-indigo-500/20" loading={isSubmitting} size="lg">
+        <Button 
+          type="submit" 
+          className="w-full rounded-xl shadow-lg shadow-indigo-500/20" 
+          loading={isSubmitting} 
+          size="lg"
+        >
           Sign In
         </Button>
       </form>

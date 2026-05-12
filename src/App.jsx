@@ -4,6 +4,7 @@ import AuthLayout     from '@/layouts/AuthLayout';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import LoginPage      from '@/pages/auth/LoginPage';
 import RegisterPage   from '@/pages/auth/RegisterPage';
+import EmailVerificationPage from '@/pages/auth/EmailVerificationPage';
 import DashboardPage  from '@/pages/dashboard/DashboardPage';
 import DocumentsPage  from '@/pages/documents/DocumentsPage';
 import DocumentEditorPage  from '@/pages/documents/DocumentEditorPage';
@@ -53,6 +54,9 @@ export default function App() {
         <Route path="/login"    element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
+
+      {/* Email verification — must be outside GuestRoute (no auth required) */}
+      <Route path="/auth/verify-email/:id/:token" element={<EmailVerificationPage />} />
 
       {/* Dashboard pages */}
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>

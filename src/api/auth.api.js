@@ -21,4 +21,7 @@ export const authApi = {
 
   googleCallback: (code) =>
     api.get(`/auth/google/callback?code=${encodeURIComponent(code)}`).then(r => r.data),
+
+  verifyEmail: (userId, token) =>
+    api.post('/auth/verify-email', { user_id: userId, token }).then(r => r.data),
 };

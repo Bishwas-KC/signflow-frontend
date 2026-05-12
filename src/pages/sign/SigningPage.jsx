@@ -16,7 +16,7 @@ import { signApi } from '@/api/sign.api';
 import {
   PenLine, Type, Upload, CheckCircle, XCircle,
   AlertTriangle, RotateCcw, FileText, ShieldCheck,
-  ChevronDown, Bookmark, Trash2, LogOut, User,
+  ChevronDown, Bookmark, Trash2, LogOut, User, Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -695,6 +695,38 @@ export default function SigningPage() {
   );
 
   const { signer, document: doc } = signingData;
+
+  // ── Sequential turn guard ─────────────────────────────────────────────
+  if (!signingData.can_sign_now && doc.signing_mode === 'sequential') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#060d1a', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <div style={{ maxWidth: 420, width: '100%', background: '#0f172a', border: '1px solid #1e293b', borderRadius: 20, padding: 36, textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+            <Clock size={24} style={{ color: '#818cf8' }} />
+          </div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 12 }}>Not Your Turn Yet</h2>
+          <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, marginBottom: 12 }}>
+            This document follows a sequential signing order.{' '}
+            Turn <strong style={{ color: '#a5b4fc' }}>{doc.current_signing_order}</strong> needs to sign first.
+          </p>
+          <p style={{ fontSize: 12, color: '#334155', marginBottom: 24 }}>
+            You will receive an email notification when it is your turn to sign.
+          </p>
+          <button
+            onClick={handleLogout}
+            style={{
+              padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+              background: 'rgba(99,102,241,0.1)', color: '#a5b4fc',
+              border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            <LogOut size={14} style={{ marginRight: 6 }} /> Sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const sigTabs = [
     { key: 'draw',   label: 'Draw',   icon: PenLine },
     { key: 'type',   label: 'Type',   icon: Type    },

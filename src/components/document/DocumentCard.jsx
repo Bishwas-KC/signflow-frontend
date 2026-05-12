@@ -10,13 +10,20 @@ export function DocumentCard({ doc, onDelete }) {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group animate-fade-in relative flex flex-col h-full">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6">
+      <div className="flex justify-between items-start mb-4">
         <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
           <FileText size={24} />
         </div>
-        <Badge size="xs" className={classNames('font-black', STATUS_COLORS[doc.status])}>
-          {STATUS_LABELS[doc.status]}
-        </Badge>
+        <div className="flex flex-col items-end gap-2">
+          <Badge size="xs" className={classNames('font-black', STATUS_COLORS[doc.status])}>
+            {STATUS_LABELS[doc.status]}
+          </Badge>
+          {doc.role === 'signer' && (
+            <span className="text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded uppercase tracking-wider">
+              Signing Request
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Content */}

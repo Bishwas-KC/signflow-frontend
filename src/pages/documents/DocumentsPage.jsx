@@ -146,12 +146,13 @@ export default function DocumentsPage() {
   const [deleteDoc, setDeleteDoc]   = useState(null);
   const [search, setSearch]         = useState('');
   const [status, setStatus]         = useState('');
+  const [role, setRole]             = useState('all'); // 'owner' | 'signer' | 'all'
   const [page, setPage]             = useState(1);
   const [view, setView]             = useState('grid'); // 'grid' or 'list'
 
   const { data, isLoading } = useQuery({
-    queryKey: ['documents', { search, status, page }],
-    queryFn:  () => documentApi.list({ search, status, page, per_page: 12 }),
+    queryKey: ['documents', { search, status, role, page }],
+    queryFn:  () => documentApi.list({ search, status, role, page, per_page: 12 }),
     placeholderData: keepPreviousData,
   });
 
@@ -206,6 +207,14 @@ export default function DocumentsPage() {
           />
         </div>
         <div className="flex gap-4">
+          <select
+            value={role} onChange={e => { setRole(e.target.value); setPage(1); }}
+            className="border border-gray-200 dark:border-slate-800 rounded-2xl px-6 py-3 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 shadow-sm transition-all appearance-none cursor-pointer"
+          >
+            <option value="all">All Documents</option>
+            <option value="owner">Owned by Me</option>
+            <option value="signer">Signing Requests</option>
+          </select>
           <select
             value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}
             className="border border-gray-200 dark:border-slate-800 rounded-2xl px-6 py-3 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 shadow-sm transition-all appearance-none cursor-pointer"
@@ -263,7 +272,12 @@ export default function DocumentsPage() {
                               <FileText size={20} />
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[240px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{doc.title}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold text-gray-900 dark:text-white truncate max-w-[240px] group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{doc.title}</p>
+                                {doc.role === 'signer' && (
+                                  <span className="text-[10px] font-black bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded uppercase tracking-wider">Signer</span>
+                                )}
+                              </div>
                               <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1 font-black uppercase tracking-wider">{doc.file?.size_formatted}</p>
                             </div>
                           </div>
