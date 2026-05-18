@@ -7,15 +7,18 @@ import { Input, Select } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { SIGN_ROLES } from '@/utils/constants';
 import { getInitials, classNames } from '@/utils/helpers';
-import { UserPlus, Users, Search, Trash2, Edit3 } from 'lucide-react';
+import {
+  UserPlus, Users, Search, Trash2, Edit3,
+  ChevronLeft, ChevronRight, Mail, Briefcase, Phone
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { keepPreviousData } from '@tanstack/react-query';
 
+// ── Contact Form Modal ──────────────────────────────────────────────────
 
 function ContactForm({ contact, onSuccess, onClose }) {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
@@ -25,7 +28,7 @@ function ContactForm({ contact, onSuccess, onClose }) {
   const save = async (data) => {
     try {
       if (contact) await contactApi.update(contact.id, data);
-      else         await contactApi.create(data);
+      else await contactApi.create(data);
       onSuccess();
     } catch (err) {
       toast.error(err.response?.data?.error?.message || 'Failed to save contact.');
@@ -50,8 +53,8 @@ function ContactForm({ contact, onSuccess, onClose }) {
         </Select>
       </div>
       <div className="flex gap-3 pt-2">
-        <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-        <Button type="submit" loading={isSubmitting} className="flex-1">
+        <Button type="button" variant="secondary" onClick={onClose} className="flex-1 rounded-xl">Cancel</Button>
+        <Button type="submit" loading={isSubmitting} className="flex-1 rounded-xl">
           {contact ? 'Save Changes' : 'Add Contact'}
         </Button>
       </div>
@@ -59,22 +62,104 @@ function ContactForm({ contact, onSuccess, onClose }) {
   );
 }
 
+// ── Pagination ──────────────────────────────────────────────────────────
+
+function Pagination({ meta, page, onPageChange }) {
+  if (!meta || meta.last_page <= 1) return null;
+
+  const pages = [];
+  const total = meta.last_page;
+  const current = meta.current_page;
+
+  let start = Math.max(1, current - 1);
+  let end = Math.min(total, current + 1);
+  if (current <= 2) { end = Math.min(3, total); }
+  if (current >= total - 1) { start = Math.max(1, total - 2); }
+  for (let i = start; i <= end; i++) pages.push(i);
+
+  return (
+    <div className="flex items-center justify-between px-6 py-4 bg-white rounded-2xl border border-gray-200/70 shadow-sm">
+      <p className="text-xs text-gray-400 font-medium">
+        Page {meta.current_page} of {meta.last_page}
+        <span className="hidden sm:inline"> &middot; {meta.total} total</span>
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed bg-gray-50 hover:bg-gray-100 disabled:bg-transparent rounded-lg transition-all"
+        >
+          <ChevronLeft size={14} /> Prev
+        </button>
+        {pages.map((p) => (
+          <button
+            key={p}
+            onClick={() => onPageChange(p)}
+            className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${
+              p === current
+                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= meta.last_page}
+          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-gray-700 disabled:text-gray-300 disabled:cursor-not-allowed bg-gray-50 hover:bg-gray-100 disabled:bg-transparent rounded-lg transition-all"
+        >
+          Next <ChevronRight size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Skeleton ─────────────────────────────────────────────────────────────
+
+function ContactSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        {Array.from({ length: 8 }, (_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-200/70 p-5 space-y-4">
+            <div className="flex flex-col items-center text-center space-y-3">
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl" />
+              <div className="space-y-2 w-full">
+                <div className="h-3 bg-gray-100 rounded w-24 mx-auto" />
+                <div className="h-2 bg-gray-50 rounded w-32 mx-auto" />
+              </div>
+            </div>
+            <div className="flex gap-2 pt-3 border-t border-gray-50">
+              <div className="flex-1 h-8 bg-gray-50 rounded-xl" />
+              <div className="flex-1 h-8 bg-gray-50 rounded-xl" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────
+
 export default function ContactsPage() {
   const queryClient = useQueryClient();
-  const [modal, setModal]       = useState(null); // null | 'create' | contact
+  const [modal, setModal] = useState(null);
   const [deleteTarget, setDelete] = useState(null);
-  const [search, setSearch]     = useState('');
-  const [role, setRole]         = useState('');
-  const [page, setPage]         = useState(1);
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState('');
+  const [page, setPage] = useState(1);
 
   const { data: statsData } = useQuery({
     queryKey: ['contact-stats'],
-    queryFn:  contactApi.stats,
+    queryFn: contactApi.stats,
   });
 
   const { data, isLoading } = useQuery({
     queryKey: ['contacts', { search, role, page }],
-    queryFn:  () => contactApi.list({ search, role, page, per_page: 12 }),
+    queryFn: () => contactApi.list({ search, role, page, per_page: 12 }),
     placeholderData: keepPreviousData,
   });
 
@@ -102,105 +187,132 @@ export default function ContactsPage() {
   const roleColor = (role) => SIGN_ROLES.find(r => r.value === role)?.color || '';
 
   return (
-    <div className="p-10 max-w-7xl mx-auto space-y-10 animate-fade-in">
-      <PageHeader
-        title="Contacts"
-        description="Maintain a directory of your frequent signers and partners."
-        action={
-          <Button size="lg" className="rounded-2xl shadow-xl shadow-indigo-500/20 px-8" onClick={() => setModal('create')}>
-            <UserPlus size={18} />Add Contact
-          </Button>
-        }
-      />
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Contacts</h1>
+          <p className="text-sm text-gray-500 mt-1">Maintain a directory of your frequent signers and partners.</p>
+        </div>
+        <Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20 flex-shrink-0" onClick={() => setModal('create')}>
+          <UserPlus size={18} /> Add Contact
+        </Button>
+      </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <div className="grid grid-cols-3 gap-4">
         {SIGN_ROLES.map(r => (
-          <div key={r.value} className="bg-white dark:bg-slate-900 rounded-[2rem] border border-gray-100 dark:border-slate-800 p-8 shadow-sm flex flex-col items-center justify-center group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
-            <p className="text-4xl font-black text-gray-900 dark:text-white mb-2 group-hover:scale-110 transition-transform">{stats[r.value] ?? 0}</p>
-            <p className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-[0.2em]">{r.label}s</p>
+          <div key={r.value} className="bg-white rounded-2xl border border-gray-200/70 p-5 flex items-center gap-4 shadow-sm hover:shadow-md hover:border-indigo-200/50 transition-all">
+            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
+              <Users size={22} className="text-indigo-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-black text-gray-900">{stats[r.value] ?? 0}</p>
+              <p className="text-xs text-gray-500 font-medium">{r.label}s</p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 group">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none" />
           <input
             value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search contacts by name or email…"
-            className="w-full pl-11 pr-4 py-3.5 text-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 rounded-[1.25rem] focus:outline-none focus:ring-4 focus:ring-indigo-500/5 text-gray-900 dark:text-slate-200 shadow-sm transition-all"
+            placeholder="Search contacts by name or email..."
+            className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 text-gray-900 transition-all placeholder:text-gray-400"
           />
         </div>
         <select
           value={role} onChange={e => { setRole(e.target.value); setPage(1); }}
-          className="border border-gray-200 dark:border-slate-800 rounded-[1.25rem] px-6 py-3.5 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 shadow-sm transition-all appearance-none cursor-pointer"
+          className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all appearance-none cursor-pointer"
         >
-          <option value="">All Signing Roles</option>
+          <option value="">All Roles</option>
           {SIGN_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
         </select>
       </div>
 
-      {/* Grid */}
+      {/* Content */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-32 gap-4">
-          <Spinner size="lg" />
-          <p className="text-sm font-black text-gray-400 uppercase tracking-widest animate-pulse">Loading contacts...</p>
-        </div>
+        <ContactSkeleton />
       ) : contacts.length === 0 ? (
-        <div className="py-24 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-dashed border-gray-200 dark:border-slate-800">
+        <div className="py-20 bg-white rounded-2xl border border-dashed border-gray-200">
           <EmptyState
             icon={Users}
             title="No contacts found"
             description={search || role ? 'Try adjusting your search criteria.' : 'Add your first contact to streamline your signing workflow.'}
             action={!search && !role && (
-              <Button variant="subtle" className="rounded-2xl px-8" onClick={() => setModal('create')}><UserPlus size={16} />Add Contact</Button>
+              <Button variant="subtle" className="rounded-xl" onClick={() => setModal('create')}>
+                <UserPlus size={16} />Add Contact
+              </Button>
             )}
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {contacts.map(c => (
-            <div key={c.id} className="bg-white dark:bg-slate-900 rounded-[2rem] border border-gray-100 dark:border-slate-800 p-8 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative overflow-hidden">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-3xl flex items-center justify-center text-indigo-700 dark:text-indigo-400 font-black text-2xl flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm mb-6">
-                  {c.initials}
-                </div>
-                <div className="w-full min-w-0">
-                  <Badge size="xs" className={classNames('px-3 mb-3', roleColor(c.sign_role))}>{c.role_label}</Badge>
-                  <p className="font-black text-gray-900 dark:text-white text-lg truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors tracking-tight mb-1">{c.full_name}</p>
-                  {c.email && <p className="text-sm text-gray-400 dark:text-slate-500 truncate font-medium">{c.email}</p>}
-                  {c.company_name && <p className="text-[10px] text-gray-300 dark:text-slate-600 mt-2 font-black uppercase tracking-widest truncate">{c.company_name}</p>}
-                </div>
-              </div>
-              <div className="flex gap-2 mt-8 pt-6 border-t border-gray-50 dark:border-slate-800">
-                <button
-                  onClick={() => setModal(c)}
-                  className="flex-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all"
-                >
-                  <Edit3 size={14} />Edit
-                </button>
-                <button
-                  onClick={() => setDelete(c)}
-                  className="flex-1 text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-red-50 dark:hover:bg-slate-800 transition-all"
-                >
-                  <Trash2 size={14} />Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {contacts.map(c => (
+              <div key={c.id} className="group bg-white rounded-2xl border border-gray-200/70 p-5 hover:shadow-lg hover:border-indigo-200/50 transition-all flex flex-col relative">
+                <div className="absolute top-0 left-6 right-6 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      {/* Pagination */}
-      {meta.last_page > 1 && (
-        <div className="flex items-center justify-between px-10 py-6 bg-white dark:bg-slate-900 rounded-[2rem] border border-gray-100 dark:border-slate-800 shadow-sm">
-          <p className="text-[10px] font-black text-gray-400 dark:text-slate-500 uppercase tracking-widest">Page {meta.current_page} of {meta.last_page} · {meta.total} Total</p>
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" className="rounded-xl px-6" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Previous</Button>
-            <Button variant="secondary" size="sm" className="rounded-xl px-6" disabled={page >= meta.last_page} onClick={() => setPage(p => p + 1)}>Next</Button>
+                <div className="flex flex-col items-center text-center flex-1">
+                  {/* Avatar */}
+                  <div className="w-16 h-16 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl flex items-center justify-center text-indigo-700 font-black text-xl flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm mb-4">
+                    {getInitials(c.full_name)}
+                  </div>
+
+                  {/* Role badge */}
+                  <Badge size="xs" className={classNames('px-2.5 mb-2.5 font-bold leading-none', roleColor(c.sign_role))}>
+                    {c.role_label}
+                  </Badge>
+
+                  {/* Name */}
+                  <h3 className="font-bold text-gray-900 text-sm truncate w-full group-hover:text-indigo-600 transition-colors">{c.full_name}</h3>
+
+                  {/* Details */}
+                  <div className="mt-3 w-full space-y-1">
+                    {c.email && (
+                      <p className="text-[11px] text-gray-400 truncate flex items-center justify-center gap-1">
+                        <Mail size={11} className="flex-shrink-0" />
+                        {c.email}
+                      </p>
+                    )}
+                    {c.company_name && (
+                      <p className="text-[11px] text-gray-400 truncate flex items-center justify-center gap-1">
+                        <Briefcase size={11} className="flex-shrink-0" />
+                        {c.company_name}
+                      </p>
+                    )}
+                    {c.phone && (
+                      <p className="text-[11px] text-gray-400 truncate flex items-center justify-center gap-1">
+                        <Phone size={11} className="flex-shrink-0" />
+                        {c.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 mt-4 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => setModal(c)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 rounded-xl transition-all"
+                  >
+                    <Edit3 size={13} /> Edit
+                  </button>
+                  <button
+                    onClick={() => setDelete(c)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-500 hover:text-red-500 bg-gray-50 hover:bg-red-50 rounded-xl transition-all"
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
+
+          <Pagination meta={meta} page={page} onPageChange={setPage} />
         </div>
       )}
 

@@ -1,87 +1,103 @@
 import { Link } from 'react-router-dom';
-import { FileText, Eye, Edit3, Trash2, MoreVertical, Calendar, Users } from 'lucide-react';
+import { FileText, Eye, Edit3, Trash2, Calendar, Users, ArrowUpRight } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { STATUS_COLORS, STATUS_LABELS } from '@/utils/constants';
-import { formatDate, classNames } from '@/utils/helpers';
+import { formatDate } from '@/utils/helpers';
+
+function SignerBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md border border-amber-200/50 leading-none">
+      <Users size={10} />
+      Signer
+    </span>
+  );
+}
 
 export function DocumentCard({ doc, onDelete }) {
   const progress = doc.progress ?? 0;
-  
+  const signed = doc.counts?.signed_count ?? 0;
+  const total = doc.counts?.total_signers ?? 0;
+  const isEditable = ['draft', 'pending'].includes(doc.status);
+  const isDeletable = doc.role === 'owner' && doc.status !== 'in_progress';
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-800 p-6 shadow-sm hover:shadow-xl hover:shadow-indigo-500/5 transition-all group animate-fade-in relative flex flex-col h-full">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-4">
-        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-          <FileText size={24} />
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <Badge size="xs" className={classNames('font-black', STATUS_COLORS[doc.status])}>
-            {STATUS_LABELS[doc.status]}
-          </Badge>
-          {doc.role === 'signer' && (
-            <span className="text-[9px] font-black bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-2 py-0.5 rounded uppercase tracking-wider">
-              Signing Request
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="group relative bg-white rounded-2xl border border-gray-200/70 hover:border-indigo-200/70 shadow-sm hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 flex flex-col">
+      {/* Top accent line */}
+      <div className="absolute top-0 left-6 right-6 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      {/* Content */}
-      <div className="flex-1">
-        <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
-          {doc.title}
-        </h3>
-        <p className="text-xs text-gray-500 dark:text-slate-500 font-medium line-clamp-1 mb-4">
-          {doc.description || 'No description provided.'}
-        </p>
-
-        <div className="space-y-4 mb-6">
-          <div className="flex items-center justify-between text-[11px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">
-            <div className="flex items-center gap-1.5">
-              <Calendar size={12} />
-              {formatDate(doc.created_at)}
+      <div className="p-5 flex-1 flex flex-col">
+        {/* Header row */}
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+              <FileText size={20} className="text-indigo-600" />
             </div>
-            <div className="flex items-center gap-1.5">
-              <Users size={12} />
-              {doc.counts?.signed_count ?? 0}/{doc.counts?.total_signers ?? 0}
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-gray-900 leading-snug line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                {doc.title}
+              </h3>
+              {doc.description && (
+                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{doc.description}</p>
+              )}
             </div>
           </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-[10px] font-black uppercase text-gray-400">
-              <span>Progress</span>
-              <span>{progress}%</span>
-            </div>
-            <div className="h-2 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-indigo-500 dark:bg-indigo-400 transition-all duration-700 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {doc.role === 'signer' && <SignerBadge />}
+            <Badge size="xs" className={`font-bold leading-none ${STATUS_COLORS[doc.status]}`}>
+              {STATUS_LABELS[doc.status]}
+            </Badge>
           </div>
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 pt-4 border-t border-gray-50 dark:border-slate-800">
-        <Link to={`/dashboard/documents/${doc.id}`} className="flex-1">
-          <button className="w-full py-2 text-xs font-black uppercase tracking-widest text-gray-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 bg-gray-50 dark:bg-slate-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all">
-            Details
-          </button>
-        </Link>
-        <div className="flex gap-1">
-          {['draft', 'pending'].includes(doc.status) && (
-            <Link to={`/dashboard/documents/${doc.id}/editor`} title="Edit Fields">
-              <button className="p-2 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg transition-colors">
-                <Edit3 size={16} />
-              </button>
+        {/* Metadata row */}
+        <div className="flex items-center gap-4 text-[11px] text-gray-400 font-medium mb-4 mt-auto">
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar size={12} />
+            {formatDate(doc.created_at)}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Users size={12} />
+            {signed}/{total} signed
+          </span>
+          <Badge size="xs" variant="gray" className="font-semibold leading-none">{doc.signing_mode}</Badge>
+        </div>
+
+        {/* Progress bar */}
+        <div className="space-y-1.5 mb-4">
+          <div className="flex justify-between text-[10px] font-semibold text-gray-400">
+            <span>Progress</span>
+            <span>{progress}%</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+          <Link
+            to={`/dashboard/documents/${doc.id}`}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 rounded-xl transition-all"
+          >
+            Details <ArrowUpRight size={14} />
+          </Link>
+          {isEditable && (
+            <Link
+              to={`/dashboard/documents/${doc.id}/editor`}
+              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+              title="Edit fields"
+            >
+              <Edit3 size={16} />
             </Link>
           )}
-          {doc.status !== 'in_progress' && (
+          {isDeletable && (
             <button
               onClick={() => onDelete(doc)}
-              title="Delete Document"
-              className="p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+              title="Delete document"
             >
               <Trash2 size={16} />
             </button>

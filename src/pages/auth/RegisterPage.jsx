@@ -1,175 +1,196 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { authApi } from '@/api/auth.api';
 import { Button } from '@/components/ui/Button';
-import { Input }  from '@/components/ui/Input';
-import { CheckCircle } from 'lucide-react';
+import { Input } from '@/components/ui/Input';
+import { CheckCircle, Lock, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const schema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  password_confirmation: z.string(),
+ name: z.string().min(2, 'Name must be at least 2 characters'),
+ email: z.string().email('Enter a valid email address'),
+ password: z.string().min(8, 'Password must be at least 8 characters'),
+ password_confirmation: z.string(),
 }).refine(d => d.password === d.password_confirmation, {
-  message: 'Passwords do not match',
-  path: ['password_confirmation'],
+ message: 'Passwords do not match',
+ path: ['password_confirmation'],
 });
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
-  const [step, setStep] = useState('form');
-  const [email, setEmail] = useState('');
-  const [serverError, setServerError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+ const navigate = useNavigate();
+ const [searchParams] = useSearchParams();
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
-    resolver: zodResolver(schema),
-  });
+ const redirectTo = searchParams.get('redirect') || '/dashboard';
+ const lockedEmail = searchParams.get('email') || '';
 
-  const onSubmit = async (data) => {
-    setServerError('');
-    setSuccessMessage('');
+ const [step, setStep] = useState('form');
+ const [email, setEmail] = useState('');
+ const [serverError, setServerError] = useState('');
+ const [successMessage, setSuccessMessage] = useState('');
 
-    try {
-      const res = await authApi.register(data);
-      
-      setEmail(data.email);
-      
-      if (res.data.resent) {
-        setSuccessMessage('Your previous verification link expired. A new verification email has been sent.');
-      } else {
-        setSuccessMessage('Account created! Please check your email to verify your account.');
-      }
-      
-      setStep('success');
-    } catch (err) {
-      const data = err?.response?.data?.error;
-      setServerError(data?.message || 'Registration failed. Please try again.');
-    }
-  };
+ const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+ resolver: zodResolver(schema),
+ defaultValues: { email: lockedEmail },
+ });
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {step === 'form' ? 'Create Account' : 'Check Your Email'}
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1.5 font-medium">
-          {step === 'form' 
-            ? 'Enter your details to get started.' 
-            : 'We sent a verification link to your email.'}
-        </p>
-      </div>
+ const onSubmit = async (data) => {
+ setServerError('');
+ setSuccessMessage('');
 
-      {/* Step 1: Registration Form */}
-      {step === 'form' && (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <Input
-            label="Full Name"
-            placeholder="John Doe"
-            error={errors.name?.message}
-            {...register('name')}
-          />
-          <Input
-            label="Email Address"
-            type="email"
-            placeholder="you@example.com"
-            error={errors.email?.message}
-            {...register('email')}
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            error={errors.password?.message}
-            {...register('password')}
-          />
-          <Input
-            label="Confirm Password"
-            type="password"
-            placeholder="••••••••"
-            error={errors.password_confirmation?.message}
-            {...register('password_confirmation')}
-          />
+ try {
+ const res = await authApi.register(data);
 
-          {serverError && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-500/20 rounded-xl p-3">
-              <p className="text-sm text-red-600 dark:text-red-400">{serverError}</p>
-              {serverError.includes('already exists') && (
-                <button
-                  type="button"
-                  onClick={() => navigate('/login')}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline mt-1"
-                >
-                  Go to login
-                </button>
-              )}
-            </div>
-          )}
+ setEmail(data.email);
 
-          <div className="pt-2">
-            <Button
-              type="submit"
-              className="w-full rounded-xl shadow-lg shadow-indigo-500/20"
-              loading={isSubmitting}
-              size="lg"
-            >
-              Create Account
-            </Button>
-          </div>
-        </form>
-      )}
+ // Store signing context so EmailVerificationPage can pick it up
+ const params = {};
+ const redirectParam = searchParams.get('redirect');
+ const emailParam = searchParams.get('email');
+ if (redirectParam) params.redirect = redirectParam;
+ if (emailParam) params.email = emailParam;
+ if (Object.keys(params).length) {
+ localStorage.setItem('pending_sign_redirect', JSON.stringify(params));
+ }
 
-      {/* Step 2: Success */}
-      {step === 'success' && (
-        <div className="space-y-6">
-          <div className="text-center py-6">
-            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle size={28} className="text-emerald-500" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Account Created!</h2>
-            <p className="text-sm text-gray-500 dark:text-slate-400">
-              We've sent a verification link to<br />
-              <span className="font-bold text-indigo-600 dark:text-indigo-400">{email}</span>
-            </p>
-          </div>
+ if (res.data.resent) {
+ setSuccessMessage('Your previous verification link expired. A new verification email has been sent.');
+ } else {
+ setSuccessMessage('Account created! Please check your email to verify your account.');
+ }
 
-          {successMessage && (
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-500/30 rounded-xl p-4">
-              <p className="text-sm text-indigo-700 dark:text-indigo-400">{successMessage}</p>
-            </div>
-          )}
+ setStep('success');
+ } catch (err) {
+ const data = err?.response?.data?.error;
+ setServerError(data?.message || 'Registration failed. Please try again.');
+ }
+ };
 
-          <div className="bg-gray-50 dark:bg-slate-800/50 border border-gray-100 dark:border-slate-700 rounded-xl p-4">
-            <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-              Next steps
-            </p>
-            <ol className="text-xs text-gray-600 dark:text-slate-400 space-y-1 list-decimal list-inside">
-              <li>Click the link in your email inbox</li>
-              <li>Verify your email address</li>
-              <li>Return here to login</li>
-            </ol>
-          </div>
+ // Auto-redirect to login after 3s on success page
+ useEffect(() => {
+ if (step !== 'success') return;
+ const timer = setTimeout(() => {
+ const stored = localStorage.getItem('pending_sign_redirect');
+ if (stored) {
+ const { redirect, email } = JSON.parse(stored);
+ const params = new URLSearchParams();
+ if (redirect) params.set('redirect', redirect);
+ if (email) params.set('email', email);
+ navigate(`/login?${params.toString()}`, { replace: true });
+ } else {
+ navigate('/login', { replace: true });
+ }
+ }, 3000);
+ return () => clearTimeout(timer);
+ }, [step, navigate]);
 
-          <Button
-            className="w-full rounded-xl"
-            onClick={() => navigate('/login')}
-          >
-            Go to Login
-          </Button>
-        </div>
-      )}
+ return (
+ <div className="space-y-6">
+ <div>
+ <h1 className="text-2xl font-bold text-gray-900">
+ {step === 'form' ? 'Create Account' : 'Check Your Email'}
+ </h1>
+ <p className="text-sm text-gray-500 mt-1.5 font-medium">
+ {step === 'form'
+ ? 'Enter your details to get started.'
+ : 'We sent a verification link to your email.'}
+ </p>
+ </div>
 
-      <p className="text-center text-sm text-gray-500 dark:text-slate-500 font-medium">
-        Already have an account?{' '}
-        <Link to="/login" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
-          Sign in
-        </Link>
-      </p>
-    </div>
-  );
+ {lockedEmail && step === 'form' && (
+ <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-start gap-3">
+ <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+ <FileText size={16} className="text-indigo-600" />
+ </div>
+ <div>
+ <p className="text-sm font-bold text-indigo-800">Create account to sign a document</p>
+ <p className="text-xs text-indigo-600 mt-1">
+ Your email <strong>{lockedEmail}</strong> is pre-filled from the invitation
+ </p>
+ </div>
+ </div>
+ )}
+
+ {step === 'form' && (
+ <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+ <Input
+ label="Full Name"
+ placeholder="John Doe"
+ error={errors.name?.message}
+ {...register('name')}
+ />
+ <div className="space-y-1">
+ <Input
+ label="Email Address"
+ type="email"
+ placeholder="you@example.com"
+ error={errors.email?.message}
+ disabled={!!lockedEmail}
+ {...register('email')}
+ />
+ {lockedEmail && (
+ <p className="flex items-center gap-1 text-[10px] font-medium text-indigo-500 mt-1">
+ <Lock size={10} /> Locked from signing invitation
+ </p>
+ )}
+ </div>
+ <Input
+ label="Password"
+ type="password"
+ placeholder="Min. 8 characters"
+ error={errors.password?.message}
+ {...register('password')}
+ />
+ <Input
+ label="Confirm Password"
+ type="password"
+ placeholder="Repeat password"
+ error={errors.password_confirmation?.message}
+ {...register('password_confirmation')}
+ />
+
+ {serverError && (
+ <div className="bg-red-50 border border-red-100 text-red-600 text-xs font-bold rounded-xl px-4 py-3">
+ {serverError}
+ </div>
+ )}
+
+ <Button type="submit" className="w-full rounded-xl shadow-lg shadow-indigo-500/20" loading={isSubmitting} size="lg">
+ Create Account
+ </Button>
+ </form>
+ )}
+
+ {step === 'success' && (
+ <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center space-y-4">
+ <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+ <CheckCircle size={28} className="text-emerald-600" />
+ </div>
+ <p className="text-sm text-emerald-700 font-medium">{successMessage}</p>
+ {email && (
+ <p className="text-xs text-emerald-600">
+ Sent to <strong>{email}</strong>
+ </p>
+ )}
+ </div>
+ )}
+
+ {step === 'form' && (
+ <p className="text-center text-sm text-gray-500 font-medium">
+ Already have an account?{' '}
+ <Link to={`/login${searchParams.toString() ? `?${searchParams.toString()}` : ''}`} className="text-indigo-600 font-bold hover:underline">
+ Sign in
+ </Link>
+ </p>
+ )}
+
+ {step === 'success' && (
+ <Link to={lockedEmail ? `/login?${searchParams.toString()}` : '/login'}>
+ <Button variant="secondary" className="w-full rounded-xl">Back to Sign In</Button>
+ </Link>
+ )}
+ </div>
+ );
 }

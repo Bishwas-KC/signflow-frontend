@@ -1,42 +1,32 @@
-// src/pages/sign/SigningPage.jsx
-// Full signing page shown after the signer is authenticated.
-// Features:
-//   • PDF viewer with highlighted signature fields
-//   • 3-tab signature input: Draw (canvas), Type (fonts), Upload (image)
-//   • Saved signature: load from account, use directly
-//   • Save new signature to account (with checkbox)
-//   • Submit / Decline flow
-
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { signApi } from '@/api/sign.api';
+import { Button } from '@/components/ui/Button';
 import {
   PenLine, Type, Upload, CheckCircle, XCircle,
-  AlertTriangle, RotateCcw, FileText, ShieldCheck,
-  ChevronDown, Bookmark, Trash2, LogOut, User, Clock,
+  AlertTriangle, RotateCcw, FileText,
+  Bookmark, Trash2, LogOut, Clock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 pdfjs.GlobalWorkerOptions.workerSrc =
   `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const PAGE_GAP   = 8;
+const PAGE_GAP = 8;
 const SCREEN_DPI = 96;
-const PDF_PTS    = 72;
+const PDF_PTS = 72;
 
 const SIGNATURE_FONTS = [
   { name: 'Dancing Script', css: "'Dancing Script', cursive" },
-  { name: 'Great Vibes',    css: "'Great Vibes', cursive" },
-  { name: 'Pacifico',       css: "'Pacifico', cursive" },
-  { name: 'Satisfy',        css: "'Satisfy', cursive" },
-  { name: 'Allura',         css: "'Allura', cursive" },
+  { name: 'Great Vibes', css: "'Great Vibes', cursive" },
+  { name: 'Pacifico', css: "'Pacifico', cursive" },
+  { name: 'Satisfy', css: "'Satisfy', cursive" },
+  { name: 'Allura', css: "'Allura', cursive" },
 ];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function getCurrentUser() {
   try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
 }
@@ -46,11 +36,10 @@ function logout() {
   localStorage.removeItem('user');
 }
 
-// ── Draw Tab ──────────────────────────────────────────────────────────────────
 function DrawTab({ onSignatureReady }) {
-  const canvasRef  = useRef(null);
-  const drawing    = useRef(false);
-  const lastPt     = useRef(null);
+  const canvasRef = useRef(null);
+  const drawing = useRef(false);
+  const lastPt = useRef(null);
   const [hasDrawn, setHasDrawn] = useState(false);
 
   const getPoint = (e, rect) => {
@@ -69,20 +58,20 @@ function DrawTab({ onSignatureReady }) {
     e.preventDefault();
     if (!drawing.current) return;
     const canvas = canvasRef.current;
-    const ctx    = canvas.getContext('2d');
-    const rect   = canvas.getBoundingClientRect();
-    const scaleX = canvas.width  / rect.width;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const pt     = getPoint(e, rect);
-    const last   = lastPt.current;
+    const pt = getPoint(e, rect);
+    const last = lastPt.current;
 
     ctx.beginPath();
     ctx.moveTo(last.x * scaleX, last.y * scaleY);
-    ctx.lineTo(pt.x  * scaleX, pt.y  * scaleY);
+    ctx.lineTo(pt.x * scaleX, pt.y * scaleY);
     ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth   = 2.5;
-    ctx.lineCap     = 'round';
-    ctx.lineJoin    = 'round';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.stroke();
 
     lastPt.current = pt;
@@ -91,165 +80,128 @@ function DrawTab({ onSignatureReady }) {
 
   const stop = useCallback(() => {
     drawing.current = false;
-    if (hasDrawn) {
-      onSignatureReady(canvasRef.current.toDataURL('image/png'));
-    }
+    if (hasDrawn) onSignatureReady(canvasRef.current.toDataURL('image/png'));
   }, [hasDrawn, onSignatureReady]);
 
-  const clear = () => {
+  const clear = useCallback(() => {
     const canvas = canvasRef.current;
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     setHasDrawn(false);
     onSignatureReady(null);
-  };
+  }, [onSignatureReady]);
 
   return (
     <div>
-      <div style={{
-        position: 'relative', borderRadius: 12,
-        border: '1px dashed #334155', background: '#ffffff', overflow: 'hidden',
-      }}>
+      <div className="relative rounded-xl border-2 border-dashed border-gray-200 bg-white overflow-hidden">
         <canvas
           ref={canvasRef}
           width={560}
           height={180}
-          style={{ width: '100%', height: 180, display: 'block', cursor: 'crosshair', touchAction: 'none' }}
+          className="w-full h-[180px] block cursor-crosshair touch-none"
           onPointerDown={start}
           onPointerMove={move}
           onPointerUp={stop}
           onPointerLeave={stop}
         />
         {!hasDrawn && (
-          <div style={{
-            position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
-          }}>
-            <PenLine size={20} style={{ color: '#cbd5e1', marginBottom: 6 }} />
-            <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>Draw your signature here</p>
-            <p style={{ fontSize: 11, color: '#e2e8f0', margin: '4px 0 0' }}>Use mouse or touchscreen</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <PenLine size={20} className="text-gray-300 mb-1.5" />
+            <p className="text-xs text-gray-400">Draw your signature here</p>
+            <p className="text-[11px] text-gray-300 mt-1">Use mouse or touchscreen</p>
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-        <button
-          onClick={clear}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-            color: '#64748b', background: '#1e293b', border: '1px solid #334155',
-            cursor: 'pointer', fontFamily: 'inherit',
-          }}
-        >
-          <RotateCcw size={12} /> Clear
-        </button>
-      </div>
+      {hasDrawn && (
+        <div className="flex justify-end mt-2">
+          <Button size="xs" variant="secondary" onClick={clear}>
+            <RotateCcw size={12} /> Clear
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Type Tab ──────────────────────────────────────────────────────────────────
 function TypeTab({ signerName, onSignatureReady }) {
-  const [text,        setText]        = useState(signerName || '');
-  const [fontIdx,     setFontIdx]     = useState(0);
+  const [text, setText] = useState(signerName || '');
+  const [fontIdx, setFontIdx] = useState(0);
   const canvasRef = useRef(null);
 
-  // Load Google Fonts once
   useEffect(() => {
     const id = 'signflow-gfonts';
     if (document.getElementById(id)) return;
-    const link   = document.createElement('link');
-    link.id      = id;
-    link.rel     = 'stylesheet';
-    link.href    = 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Great+Vibes&family=Pacifico&family=Satisfy&family=Allura&display=swap';
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Great+Vibes&family=Pacifico&family=Satisfy&family=Allura&display=swap';
     document.head.appendChild(link);
   }, []);
 
   const renderToCanvas = useCallback(async (txt, fIdx) => {
-    const canvas  = canvasRef.current;
+    const canvas = canvasRef.current;
     if (!canvas || !txt.trim()) { onSignatureReady(null); return; }
-    const font    = SIGNATURE_FONTS[fIdx];
+    const font = SIGNATURE_FONTS[fIdx];
+    const fontFamily = font.css.replace(/,.*$/, '').trim();
 
-    try { await document.fonts.load(`bold 56px ${font.css}`); } catch {}
+    try { await document.fonts.load(`bold 56px ${fontFamily}`); } catch {}
 
-    const ctx     = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Fit text
-    let fontSize  = 60;
-    ctx.font      = `bold ${fontSize}px ${font.css}`;
+    let fontSize = 60;
+    ctx.font = `bold ${fontSize}px ${fontFamily}`;
     while (ctx.measureText(txt).width > canvas.width * 0.88 && fontSize > 20) {
       fontSize -= 2;
-      ctx.font  = `bold ${fontSize}px ${font.css}`;
+      ctx.font = `bold ${fontSize}px ${fontFamily}`;
     }
 
-    ctx.fillStyle    = '#1e293b';
-    ctx.textAlign    = 'center';
+    ctx.fillStyle = '#1e293b';
+    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(txt, canvas.width / 2, canvas.height / 2);
 
     onSignatureReady(canvas.toDataURL('image/png'));
   }, [onSignatureReady]);
 
-  useEffect(() => { renderToCanvas(text, fontIdx); }, [text, fontIdx]);
+  useEffect(() => { renderToCanvas(text, fontIdx); }, [text, fontIdx, renderToCanvas]);
 
   const font = SIGNATURE_FONTS[fontIdx];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="flex flex-col gap-3">
       <input
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="Type your name"
-        style={{
-          padding: '10px 14px', borderRadius: 10, fontSize: 13,
-          background: '#1e293b', border: '1px solid #334155', color: '#e2e8f0',
-          outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
-        }}
+        className="w-full px-3.5 py-2.5 rounded-lg text-sm bg-white border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-inherit box-border"
       />
-
-      {/* Font selector */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div className="flex gap-1.5 flex-wrap">
         {SIGNATURE_FONTS.map((f, i) => (
           <button
             key={f.name}
             onClick={() => setFontIdx(i)}
-            style={{
-              padding: '6px 14px', borderRadius: 8,
-              background: fontIdx === i ? 'rgba(99,102,241,0.15)' : '#1e293b',
-              border: `1px solid ${fontIdx === i ? '#6366f1' : '#334155'}`,
-              color: fontIdx === i ? '#a5b4fc' : '#64748b',
-              cursor: 'pointer', fontSize: 18, fontFamily: f.css,
-              transition: 'all 0.15s',
-            }}
+            className={`px-3.5 py-1.5 rounded-lg text-base border transition-all ${
+              fontIdx === i
+                ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}
+            style={{ fontFamily: f.css }}
           >
             {text || 'Sign'}
           </button>
         ))}
       </div>
-
-      {/* Preview canvas (hidden — used for rendering) */}
-      <canvas ref={canvasRef} width={560} height={180} style={{ display: 'none' }} />
-
-      {/* Visual preview */}
-      {text.trim() && (
-        <div style={{
-          padding: '20px 24px', borderRadius: 12,
-          background: '#ffffff', border: '1px solid #e2e8f0',
-          textAlign: 'center', minHeight: 80, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
+      <canvas ref={canvasRef} width={560} height={180} className="hidden" />
+      {text.trim() ? (
+        <div className="p-5 rounded-xl bg-white border border-gray-200 text-center min-h-[80px] flex items-center justify-center">
           <span style={{ fontFamily: font.css, fontSize: 48, color: '#1e293b', fontWeight: 700 }}>
             {text}
           </span>
         </div>
-      )}
-      {!text.trim() && (
-        <div style={{
-          padding: '20px 24px', borderRadius: 12,
-          background: '#0f172a', border: '1px dashed #334155',
-          textAlign: 'center', color: '#334155', fontSize: 12,
-        }}>
+      ) : (
+        <div className="p-5 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-center text-gray-400 text-xs">
           Type your name above to preview
         </div>
       )}
@@ -257,115 +209,93 @@ function TypeTab({ signerName, onSignatureReady }) {
   );
 }
 
-// ── Upload Tab ─────────────────────────────────────────────────────────────────
 function UploadTab({ savedSignature, onSignatureReady }) {
   const [preview, setPreview] = useState(null);
-  const [uploadedFile, setUploadedFile] = useState(null);
   const inputRef = useRef(null);
 
-  const handleFile = e => {
+  const toPngDataUri = (dataUri) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(dataUri);
+      img.src = dataUri;
+    });
+  };
+
+  const handleFile = async e => {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { toast.error('Please upload an image file.'); return; }
     if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2 MB.'); return; }
-
     const reader = new FileReader();
-    reader.onload = ev => {
-      setPreview(ev.target.result);
-      setUploadedFile(file); // Store the File object for submission
-      onSignatureReady(file); // Pass File object to parent
+    reader.onload = async ev => {
+      const dataUri = ev.target.result;
+      setPreview(dataUri);
+      const pngUri = await toPngDataUri(dataUri);
+      onSignatureReady(pngUri);
     };
     reader.readAsDataURL(file);
   };
 
-  const useSaved = () => {
+  const useSaved = useCallback(() => {
     setPreview(savedSignature);
-    setUploadedFile(null);
-    onSignatureReady(savedSignature); // Pass base64 string for saved signature
-  };
+    onSignatureReady(savedSignature);
+  }, [savedSignature, onSignatureReady]);
 
-  const clear = () => {
+  const clear = useCallback(() => {
     setPreview(null);
-    setUploadedFile(null);
     onSignatureReady(null);
     if (inputRef.current) inputRef.current.value = '';
-  };
+  }, [onSignatureReady]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Saved signature option */}
+    <div className="flex flex-col gap-3">
       {savedSignature && !preview && (
-        <div style={{
-          borderRadius: 12, border: '1px solid #334155',
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            padding: '10px 14px', background: '#1e293b',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Bookmark size={13} style={{ color: '#818cf8' }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>
-                Saved signature
-              </span>
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-3.5 py-2.5 bg-gray-50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bookmark size={13} className="text-indigo-400" />
+              <span className="text-xs font-semibold text-gray-500">Saved signature</span>
             </div>
             <button
               onClick={useSaved}
-              style={{
-                padding: '4px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                background: 'rgba(99,102,241,0.15)', color: '#a5b4fc',
-                border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              className="px-3 py-1 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 cursor-pointer font-inherit"
             >
               Use this
             </button>
           </div>
-          <div style={{ background: '#ffffff', padding: 12, textAlign: 'center' }}>
-            <img src={savedSignature} alt="Saved signature" style={{ maxHeight: 70, maxWidth: '100%' }} />
+          <div className="bg-white p-3 text-center">
+            <img src={savedSignature} alt="Saved signature" className="max-h-[70px] max-w-full inline-block" />
           </div>
         </div>
       )}
 
-      {/* Upload area */}
       {!preview ? (
         <div
           onClick={() => inputRef.current?.click()}
-          style={{
-            padding: '32px 20px', borderRadius: 12,
-            border: '2px dashed #334155', background: '#0f172a',
-            textAlign: 'center', cursor: 'pointer',
-            transition: 'border-color 0.15s',
-          }}
-          onMouseOver={e => e.currentTarget.style.borderColor = '#6366f1'}
-          onMouseOut={e => e.currentTarget.style.borderColor = '#334155'}
+          className="py-8 px-5 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-center cursor-pointer hover:border-indigo-400 transition-colors"
         >
-          <Upload size={24} style={{ color: '#475569', marginBottom: 8 }} />
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#64748b', margin: '0 0 4px' }}>
-            Click to upload your signature
-          </p>
-          <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>
-            PNG, JPG, SVG — max 2 MB
-          </p>
-          <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
+          <Upload size={24} className="text-gray-300 mx-auto mb-2" />
+          <p className="text-sm font-semibold text-gray-500 mb-1">Click to upload your signature</p>
+          <p className="text-[11px] text-gray-400">PNG, JPG, SVG — max 2 MB</p>
+          <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
         </div>
       ) : (
-        <div style={{ borderRadius: 12, border: '1px solid #334155', overflow: 'hidden' }}>
-          <div style={{ background: '#ffffff', padding: '20px', textAlign: 'center' }}>
-            <img src={preview} alt="Signature preview" style={{ maxHeight: 120, maxWidth: '100%' }} />
+        <div className="rounded-xl border border-gray-200 overflow-hidden">
+          <div className="bg-white p-5 text-center">
+            <img src={preview} alt="Signature preview" className="max-h-[120px] max-w-full inline-block" />
           </div>
-          <div style={{
-            padding: '10px 14px', background: '#1e293b',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          }}>
-            <span style={{ fontSize: 11, color: '#475569' }}>Signature ready</span>
+          <div className="px-3.5 py-2.5 bg-gray-50 flex items-center justify-between">
+            <span className="text-[11px] text-gray-400">Signature ready</span>
             <button
               onClick={clear}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 5,
-                padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                background: 'rgba(239,68,68,0.1)', color: '#f87171',
-                border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-red-50 text-red-500 border border-red-200 cursor-pointer font-inherit"
             >
               <Trash2 size={11} /> Remove
             </button>
@@ -376,119 +306,77 @@ function UploadTab({ savedSignature, onSignatureReady }) {
   );
 }
 
-// ── Decline Modal ─────────────────────────────────────────────────────────────
 function DeclineModal({ open, onClose, onConfirm, loading }) {
   const [reason, setReason] = useState('');
   if (!open) return null;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div
-        style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
-        onClick={onClose}
-      />
-      <div style={{
-        position: 'relative', zIndex: 1, width: '100%', maxWidth: 420,
-        background: '#0f172a', border: '1px solid #1e293b', borderRadius: 20, padding: 28,
-      }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: '50%', background: 'rgba(239,68,68,0.1)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-        }}>
-          <XCircle size={22} style={{ color: '#ef4444' }} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-xl p-7">
+        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+          <XCircle size={22} className="text-red-500" />
         </div>
-        <h3 style={{ textAlign: 'center', fontSize: 17, fontWeight: 700, color: '#f1f5f9', marginBottom: 6 }}>
-          Decline to sign?
-        </h3>
-        <p style={{ textAlign: 'center', fontSize: 12, color: '#475569', marginBottom: 20 }}>
+        <h3 className="text-center text-lg font-bold text-gray-900 mb-1">Decline to sign?</h3>
+        <p className="text-center text-sm text-gray-500 mb-5">
           The document owner will be notified. This cannot be undone.
         </p>
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>
-            Reason (optional)
-          </label>
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-gray-600 mb-1.5">Reason (optional)</label>
           <textarea
             value={reason}
             onChange={e => setReason(e.target.value)}
             placeholder="e.g. I do not agree with clause 5..."
             rows={3}
-            style={{
-              width: '100%', boxSizing: 'border-box', padding: '10px 12px',
-              background: '#1e293b', border: '1px solid #334155', borderRadius: 10,
-              fontSize: 13, color: '#e2e8f0', resize: 'vertical',
-              outline: 'none', fontFamily: 'inherit',
-            }}
+            className="w-full px-3 py-2.5 rounded-lg text-sm bg-white border border-gray-200 text-gray-900 resize-vertical focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-inherit box-border"
           />
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={onClose}
-            style={{
-              flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 600,
-              background: '#1e293b', color: '#94a3b8', border: '1px solid #334155',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onConfirm(reason)}
-            disabled={loading}
-            style={{
-              flex: 1, padding: '10px 0', borderRadius: 10, fontSize: 13, fontWeight: 700,
-              background: 'linear-gradient(135deg,#dc2626,#ef4444)', color: 'white',
-              border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit', opacity: loading ? 0.7 : 1,
-            }}
-          >
-            {loading ? 'Declining…' : 'Decline'}
-          </button>
+        <div className="flex gap-2.5">
+          <Button variant="secondary" className="flex-1 rounded-lg" onClick={onClose}>Cancel</Button>
+          <Button variant="danger" className="flex-1 rounded-lg" loading={loading} onClick={() => onConfirm(reason)}>
+            Decline
+          </Button>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function SigningPage() {
-  const { token }  = useParams();
-  const navigate    = useNavigate();
-  const user        = getCurrentUser();
+  const { token } = useParams();
+  const navigate = useNavigate();
+  const [user] = useState(getCurrentUser);
 
-  // ── Data ─────────────────────────────────────────────────────────────────
-  const [signingData,     setSigningData]     = useState(null);
-  const [savedSignature,  setSavedSignature]  = useState(null);
-  const [loading,         setLoading]         = useState(true);
-  const [loadError,       setLoadError]       = useState(null);
-  const [emailMismatch,   setEmailMismatch]   = useState(false);
+  const [signingData, setSigningData] = useState(null);
+  const [savedSignature, setSavedSignature] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [emailMismatch, setEmailMismatch] = useState(false);
 
-  // ── PDF ───────────────────────────────────────────────────────────────────
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageW,      setPageW]      = useState(794);
-  const [pageH,      setPageH]      = useState(1123);
+  const [pageW, setPageW] = useState(794);
+  const [pageH, setPageH] = useState(1123);
+  const [pdfError, setPdfError] = useState(false);
 
-  // ── Signature ─────────────────────────────────────────────────────────────
-  const [sigTab,         setSigTab]         = useState('draw');   // 'draw'|'type'|'upload'
-  const [signatureData,  setSignatureData]  = useState(null);     // final data URI
-  const [saveToAccount,  setSaveToAccount]  = useState(false);
-  const [submitting,     setSubmitting]     = useState(false);
-  const [declining,      setDeclining]      = useState(false);
-  const [showDecline,    setShowDecline]    = useState(false);
+  const [sigTab, setSigTab] = useState('draw');
+  const [signatureData, setSignatureData] = useState(null);
+  const [saveToAccount, setSaveToAccount] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [declining, setDeclining] = useState(false);
+  const [showDecline, setShowDecline] = useState(false);
 
-  // ── OTP flow ────────────────────────────────────────────────────────
-  const [otpSent,        setOtpSent]        = useState(false);
-  const [otp,            setOtp]            = useState("");
-  const [verifying,      setVerifying]      = useState(false);
-  const [otpError,       setOtpError]       = useState("");
-  // ── Auth guard: redirect if not logged in ─────────────────────────────────
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
   useEffect(() => {
     if (!localStorage.getItem('token')) {
       navigate(`/sign/${token}`, { replace: true });
     }
   }, [token]);
 
-  // ── Load signing data + saved signature ───────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -501,12 +389,11 @@ export default function SigningPage() {
           const data = sigRes.value.data;
           setSigningData(data);
 
-          // Verify email match
-          if (user && data.signer.email.toLowerCase() !== user.email.toLowerCase()) {
+          const currentUser = getCurrentUser();
+          if (currentUser && data.signer.email.toLowerCase() !== currentUser.email.toLowerCase()) {
             setEmailMismatch(true);
           }
 
-          // If already signed, go to thank you
           if (data.signer.status === 'signed') {
             navigate(`/sign/${token}/thank-you`, { replace: true });
             return;
@@ -524,48 +411,44 @@ export default function SigningPage() {
     })();
   }, [token]);
 
-   // ── Load PDF as blob (with auth token) ───────────────────────────────────
-   const [pdfError, setPdfError] = useState(false);
-   useEffect(() => {
-     const pdfUrl = signingData?.document?.pdf_url;
-     if (!pdfUrl) return;
-     let alive = true;
-     let objectUrl = null;
+  useEffect(() => {
+    const pdfUrl = signingData?.document?.preview_url;
+    if (!pdfUrl) return;
+    let alive = true;
+    let objectUrl = null;
 
-     (async () => {
-       try {
-         const token = localStorage.getItem('token');
-         const res   = await fetch(pdfUrl, {
-           headers: token ? { Authorization: `Bearer ${token}` } : {},
-         });
-         if (!res.ok) throw new Error('Failed to load PDF');
-         const blob  = await res.blob();
-         if (!alive) return;
-         objectUrl   = URL.createObjectURL(blob);
-         setPdfBlobUrl(objectUrl);
-         setPdfError(false);
-       } catch (err) {
-         console.error('PDF load failed:', err);
-         setPdfError(true);
-       }
-     })();
+    (async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(pdfUrl, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error('Failed to load PDF');
+        const blob = await res.blob();
+        if (!alive) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPdfBlobUrl(objectUrl);
+        setPdfError(false);
+      } catch (err) {
+        console.error('PDF load failed:', err);
+        setPdfError(true);
+      }
+    })();
 
-     return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
-   }, [signingData?.document?.pdf_url]);
+    return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [signingData?.document?.preview_url]);
 
-  // ── PDF size detection ────────────────────────────────────────────────────
   const onPdfLoad = useCallback(async (pdfProxy) => {
     setTotalPages(pdfProxy.numPages);
     try {
-      const page     = await pdfProxy.getPage(1);
+      const page = await pdfProxy.getPage(1);
       const viewport = page.getViewport({ scale: 1 });
-      const scale    = SCREEN_DPI / PDF_PTS;
-      setPageW(Math.round(viewport.width  * scale));
+      const scale = SCREEN_DPI / PDF_PTS;
+      setPageW(Math.round(viewport.width * scale));
       setPageH(Math.round(viewport.height * scale));
     } catch {}
   }, []);
 
-  // ── Fields grouped by page ────────────────────────────────────────────────
   const fieldsByPage = useMemo(() => {
     if (!signingData?.fields) return {};
     return signingData.fields.reduce((acc, f) => {
@@ -575,37 +458,13 @@ export default function SigningPage() {
     }, {});
   }, [signingData]);
 
-  // ── Submit → Step1: Send OTP ─────────────────────────────
-  const handleSubmit = async () => {
+  const handleSign = async () => {
     if (!signatureData) { toast.error('Please create your signature first.'); return; }
-
-    // Step2: Verify OTP
-    if (otpSent) {
-      if (!otp || otp.length < 4) { toast.error('Please enter the OTP sent to your email.'); return; }
-      setVerifying(true);
-      setOtpError('');
-      try {
-        await signApi.verifyOtp(token, otp);
-        toast.success('Document signed successfully!');
-        navigate(`/sign/${token}/thank-you`);
-      } catch (err) {
-        const msg = err?.response?.data?.message || 'Invalid or expired OTP.';
-        setOtpError(msg);
-        toast.error(msg);
-      } finally {
-        setVerifying(false);
-      }
-      return;
-    }
-
-    // Step1: Submit signature → sends OTP to signer's email
     setSubmitting(true);
     try {
-      // Optionally save to account (only for draw/type, not file upload)
-      if (saveToAccount && !(signatureData instanceof File)) {
+      if (saveToAccount) {
         await signApi.saveSignature(signatureData).catch(() => {});
       }
-
       await signApi.submit(token, signatureData);
       setOtpSent(true);
       toast.success('OTP sent to your email! Please check your inbox.');
@@ -621,8 +480,23 @@ export default function SigningPage() {
     }
   };
 
+  const handleVerify = async () => {
+    if (!otp || otp.length < 4) { toast.error('Please enter the OTP sent to your email.'); return; }
+    setVerifying(true);
+    setOtpError('');
+    try {
+      await signApi.verifyOtp(token, otp);
+      toast.success('Document signed successfully!');
+      navigate(`/sign/${token}/thank-you`);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Invalid or expired OTP.';
+      setOtpError(msg);
+      toast.error(msg);
+    } finally {
+      setVerifying(false);
+    }
+  };
 
-  // ── Decline ───────────────────────────────────────────────────────────────
   const handleDecline = async (reason) => {
     setDeclining(true);
     try {
@@ -642,463 +516,314 @@ export default function SigningPage() {
     navigate(`/sign/${token}/auth`, { replace: true });
   };
 
-  // ── Loading ───────────────────────────────────────────────────────────────
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#060d1a' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: '50%',
-          border: '3px solid #1e293b', borderTopColor: '#6366f1',
-          animation: 'spin 0.8s linear infinite', margin: '0 auto 16px',
-        }} />
-        <p style={{ color: '#334155', fontSize: 13 }}>Loading document…</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="w-10 h-10 border-3 border-gray-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-sm text-gray-500">Loading document…</p>
       </div>
     </div>
   );
 
   if (loadError) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#060d1a', padding: 24 }}>
-      <div style={{ maxWidth: 380, textAlign: 'center', background: '#0f172a', border: '1px solid #1e293b', borderRadius: 20, padding: 40 }}>
-        <AlertTriangle size={32} style={{ color: '#f59e0b', marginBottom: 16 }} />
-        <h2 style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>Unable to Load</h2>
-        <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{loadError}</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="max-w-sm text-center bg-white border border-gray-200 rounded-2xl p-10 shadow-lg">
+        <AlertTriangle size={32} className="text-amber-500 mx-auto mb-4" />
+        <h2 className="text-lg font-bold text-gray-900 mb-2">Unable to Load</h2>
+        <p className="text-sm text-gray-500 leading-relaxed">{loadError}</p>
       </div>
     </div>
   );
 
-  // ── Email mismatch warning ────────────────────────────────────────────────
   if (emailMismatch) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#060d1a', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 420, width: '100%', background: '#0f172a', border: '1px solid #1e293b', borderRadius: 20, padding: 36 }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-          <AlertTriangle size={24} style={{ color: '#ef4444' }} />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="max-w-sm w-full bg-white border border-gray-200 rounded-2xl p-8 shadow-lg text-center">
+        <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
+          <AlertTriangle size={24} className="text-red-500" />
         </div>
-        <h2 style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 12 }}>Wrong Account</h2>
-        <p style={{ textAlign: 'center', fontSize: 13, color: '#475569', lineHeight: 1.7, marginBottom: 24 }}>
-          You are signed in as <strong style={{ color: '#94a3b8' }}>{user?.email}</strong>, but this document
-          must be signed by <strong style={{ color: '#f87171' }}>{signingData?.signer?.email}</strong>.
+        <h2 className="text-lg font-bold text-gray-900 mb-3">Wrong Account</h2>
+        <p className="text-sm text-gray-500 leading-relaxed mb-6">
+          You are signed in as <strong className="text-gray-700">{user?.email}</strong>, but this document
+          must be signed by <strong className="text-red-500">{signingData?.signer?.email}</strong>.
         </p>
-        <button
-          onClick={handleLogout}
-          style={{
-            width: '100%', padding: '12px 0', borderRadius: 10, fontSize: 14, fontWeight: 700,
-            background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: 'white',
-            border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          }}
-        >
+        <Button className="w-full rounded-lg" onClick={handleLogout}>
           <LogOut size={14} /> Sign out & use correct account
-        </button>
+        </Button>
       </div>
     </div>
   );
 
   const { signer, document: doc } = signingData;
 
-  // ── Sequential turn guard ─────────────────────────────────────────────
   if (!signingData.can_sign_now && doc.signing_mode === 'sequential') {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#060d1a', padding: 24, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <div style={{ maxWidth: 420, width: '100%', background: '#0f172a', border: '1px solid #1e293b', borderRadius: 20, padding: 36, textAlign: 'center' }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-            <Clock size={24} style={{ color: '#818cf8' }} />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-sm w-full bg-white border border-gray-200 rounded-2xl p-8 shadow-lg text-center">
+          <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center mx-auto mb-5">
+            <Clock size={24} className="text-indigo-500" />
           </div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 12 }}>Not Your Turn Yet</h2>
-          <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.7, marginBottom: 12 }}>
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Not Your Turn Yet</h2>
+          <p className="text-sm text-gray-500 leading-relaxed mb-3">
             This document follows a sequential signing order.{' '}
-            Turn <strong style={{ color: '#a5b4fc' }}>{doc.current_signing_order}</strong> needs to sign first.
+            Turn <strong className="text-indigo-600">{doc.current_signing_order}</strong> needs to sign first.
           </p>
-          <p style={{ fontSize: 12, color: '#334155', marginBottom: 24 }}>
+          <p className="text-xs text-gray-400 mb-6">
             You will receive an email notification when it is your turn to sign.
           </p>
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '10px 24px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-              background: 'rgba(99,102,241,0.1)', color: '#a5b4fc',
-              border: '1px solid rgba(99,102,241,0.3)', cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <LogOut size={14} style={{ marginRight: 6 }} /> Sign out
-          </button>
+          <Button variant="secondary" className="rounded-lg" onClick={handleLogout}>
+            <LogOut size={14} /> Sign out
+          </Button>
         </div>
       </div>
     );
   }
 
   const sigTabs = [
-    { key: 'draw',   label: 'Draw',   icon: PenLine },
-    { key: 'type',   label: 'Type',   icon: Type    },
-    { key: 'upload', label: 'Upload', icon: Upload  },
+    { key: 'draw', label: 'Draw', icon: PenLine },
+    { key: 'type', label: 'Type', icon: Type },
+    { key: 'upload', label: 'Upload', icon: Upload },
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#060d1a', fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-
-      {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 30,
-        background: 'rgba(6,13,26,0.95)', backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #0f1e35', padding: '0 20px',
-      }}>
-        <div style={{
-          maxWidth: 1280, margin: '0 auto', height: 54,
-          display: 'flex', alignItems: 'center', gap: 16,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-            <ShieldCheck size={16} style={{ color: '#6366f1', flexShrink: 0 }} />
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {doc.title}
-              </p>
-              {doc.company && (
-                <p style={{ fontSize: 11, color: '#334155', margin: 0 }}>{doc.company.name}</p>
-              )}
-            </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top bar */}
+      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 px-5">
+        <div className="max-w-7xl mx-auto h-12 flex items-center justify-between gap-4">
+          <p className="text-sm font-bold text-gray-900 truncate min-w-0">{doc.title}</p>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-xs text-gray-400 hidden sm:inline">{signer.email}</span>
+            <button
+              onClick={handleLogout}
+              className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-all cursor-pointer font-inherit"
+            >
+              Log out
+            </button>
           </div>
-
-          {/* Signer info */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
-            padding: '5px 12px', borderRadius: 20,
-            background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.15)',
-          }}>
-            <User size={12} style={{ color: '#818cf8' }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#a5b4fc' }}>
-              {signer.name}
-            </span>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5, padding: '6px 10px', borderRadius: 8,
-              fontSize: 11, fontWeight: 600, color: '#475569', background: 'none', border: 'none',
-              cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            <LogOut size={12} /> Log out
-          </button>
         </div>
       </div>
 
-      {/* ── Body ────────────────────────────────────────────────────────────── */}
-      <div style={{
-        maxWidth: 1280, margin: '0 auto', padding: '24px 20px',
-        display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24,
-      }}>
+      <div className="max-w-7xl mx-auto p-5 lg:p-8 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
+        {/* PDF preview */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
+            <FileText size={14} className="text-gray-400" />
+            <span className="text-xs font-semibold text-gray-500">
+              {signingData.total_fields} field{signingData.total_fields > 1 ? 's' : ''} on {signingData.pages_to_sign.length} page{signingData.pages_to_sign.length > 1 ? 's' : ''}
+            </span>
+            <div className="ml-auto flex flex-wrap gap-1.5">
+              {signingData.pages_to_sign.map(p => (
+                <span key={p} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">
+                  P{p}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="overflow-y-auto max-h-[75vh] bg-gray-50/50 py-4">
+            {pdfBlobUrl ? (
+              <div className="flex justify-center">
+                <div className="relative" style={{ width: pageW }}>
+                  <Document
+                    file={pdfBlobUrl}
+                    onLoadSuccess={onPdfLoad}
+                    loading={null}
+                  >
+                    {Array.from({ length: totalPages }, (_, i) => {
+                      const pageNum = i + 1;
+                      const pageFields = fieldsByPage[pageNum] || [];
 
-        {/* ── Left: PDF viewer ─────────────────────────────────────────────── */}
-        <div>
-          <div style={{
-            background: '#0f172a', border: '1px solid #1e293b',
-            borderRadius: 16, overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '12px 20px', borderBottom: '1px solid #1e293b',
-              background: '#0a1628', display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <FileText size={14} style={{ color: '#475569' }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>
-                {signingData.total_fields} signature field{signingData.total_fields > 1 ? 's' : ''} on {signingData.pages_to_sign.length} page{signingData.pages_to_sign.length > 1 ? 's' : ''}
-              </span>
-              <div style={{
-                marginLeft: 'auto', display: 'flex', flexWrap: 'wrap', gap: 4,
-              }}>
-                {signingData.pages_to_sign.map(p => (
-                  <span key={p} style={{
-                    padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
-                    background: 'rgba(245,158,11,0.1)', color: '#fbbf24',
-                    border: '1px solid rgba(245,158,11,0.2)',
-                  }}>
-                    P{p}
-                  </span>
-                ))}
+                      return (
+                        <div key={i} className={`relative ${i < totalPages - 1 ? 'mb-2' : ''}`}>
+                          <Page
+                            pageNumber={pageNum}
+                            width={pageW}
+                            renderAnnotationLayer={false}
+                            renderTextLayer={false}
+                          />
+                          {pageFields.map(field => {
+                            const signed = !!signatureData;
+                            return (
+                              <div
+                                key={field.id}
+                                className={`absolute border-2 rounded-md flex items-center justify-center transition-all cursor-default z-10 overflow-hidden ${
+                                  signed ? 'border-emerald-400 bg-emerald-50/20' : 'border-amber-400 bg-amber-50/20'
+                                }`}
+                                style={{
+                                  left: field.position.x,
+                                  top: field.position.y,
+                                  width: field.position.width || 200,
+                                  height: field.position.height || 60,
+                                }}
+                              >
+                                {signed ? (
+                                  <img
+                                    src={signatureData}
+                                    alt="signature"
+                                    className="max-w-full max-h-full object-contain"
+                                  />
+                                ) : (
+                                  <div className="text-center">
+                                    <PenLine size={14} className="text-amber-500 mx-auto" />
+                                    <p className="text-[9px] text-amber-600 mt-0.5 font-bold">SIGN HERE</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </Document>
+                </div>
               </div>
-            </div>
-
-            <div style={{ overflowY: 'auto', maxHeight: '75vh', background: '#0f172a', padding: '16px 0' }}>
-              {pdfBlobUrl ? (
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                  <div style={{ position: 'relative', width: pageW }}>
-                    <Document
-                      file={pdfBlobUrl}
-                      onLoadSuccess={onPdfLoad}
-                      loading={null}
-                    >
-                      {Array.from({ length: totalPages }, (_, i) => {
-                        const pageNum    = i + 1;
-                        const pageFields = fieldsByPage[pageNum] || [];
-                        const pageTop    = i * (pageH + PAGE_GAP);
-
-                        return (
-                          <div key={i} style={{ position: 'relative', marginBottom: i < totalPages - 1 ? PAGE_GAP : 0 }}>
-                            <Page
-                              pageNumber={pageNum}
-                              width={pageW}
-                              renderAnnotationLayer={false}
-                              renderTextLayer={false}
-                            />
-                            {/* Field overlays */}
-                            {pageFields.map(field => {
-                              const absY    = field.position.y;
-                              const pageOffset = i * (pageH + PAGE_GAP);
-                              const relY    = absY - pageOffset;
-                              const signed  = !!signatureData;
-
-                              return (
-                                <div
-                                  key={field.id}
-                                  style={{
-                                    position: 'absolute',
-                                    left: field.position.x,
-                                    top:  relY,
-                                    width:  field.position.width  || 200,
-                                    height: field.position.height || 60,
-                                    border: `2px solid ${signed ? '#10b981' : '#f59e0b'}`,
-                                    borderRadius: 6,
-                                    background: signed ? 'rgba(16,185,129,0.08)' : 'rgba(245,158,11,0.08)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    transition: 'all 0.3s', cursor: 'default', zIndex: 10,
-                                    overflow: 'hidden',
-                                  }}
-                                >
-                                  {signed ? (
-                                    <img
-                                      src={signatureData}
-                                      alt="signature"
-                                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                                    />
-                                  ) : (
-                                    <div style={{ textAlign: 'center' }}>
-                                      <PenLine size={14} style={{ color: '#f59e0b' }} />
-                                      <p style={{ fontSize: 9, color: '#f59e0b', margin: '2px 0 0', fontWeight: 700 }}>
-                                        SIGN HERE
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </Document>
-                  </div>
-                </div>
-              ) : pdfError ? (
-                <div style={{ padding: 40, textAlign: 'center', color: '#475569' }}>
-                  <AlertTriangle size={32} style={{ marginBottom: 12, color: '#f59e0b' }} />
-                  <p style={{ fontSize: 13, marginBottom: 8 }}>PDF preview unavailable</p>
-                  <p style={{ fontSize: 11, color: '#334155' }}>You can still sign the document below</p>
-                </div>
-              ) : (
-                <div style={{ padding: 40, textAlign: 'center', color: '#334155' }}>
-                  <FileText size={32} style={{ marginBottom: 12 }} />
-                  <p style={{ fontSize: 13 }}>PDF preview loading…</p>
-                </div>
-              )}
-            </div>
+            ) : pdfError ? (
+              <div className="py-10 text-center text-gray-400">
+                <AlertTriangle size={32} className="text-amber-500 mx-auto mb-3" />
+                <p className="text-sm mb-2">PDF preview unavailable</p>
+                <p className="text-xs text-gray-400">You can still sign the document below</p>
+              </div>
+            ) : (
+              <div className="py-10 text-center text-gray-300">
+                <FileText size={32} className="mx-auto mb-3" />
+                <p className="text-sm">PDF preview loading…</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ── Right: Signature panel ───────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Signing panel */}
+        <div className="flex flex-col gap-4">
 
-          {/* Saved signature quick-use */}
+          {/* Signer info */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Signing as</p>
+            <p className="text-sm font-bold text-gray-900">{signer.name}</p>
+            <p className="text-xs text-gray-500">{signer.email}</p>
+          </div>
+
+          {/* Saved signature */}
           {savedSignature && (
-            <div style={{
-              background: '#0f172a', border: '1px solid #1e293b',
-              borderRadius: 16, overflow: 'hidden',
-            }}>
-              <div style={{
-                padding: '12px 16px', borderBottom: '1px solid #1e293b',
-                background: '#0a1628', display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                <Bookmark size={13} style={{ color: '#818cf8' }} />
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Saved Signature
-                </span>
-              </div>
-              <div style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ background: '#ffffff', borderRadius: 8, padding: '8px 12px', flex: 1 }}>
-                  <img src={savedSignature} alt="Saved sig" style={{ maxHeight: 50, maxWidth: '100%', display: 'block' }} />
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bookmark size={13} className="text-indigo-400" />
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Saved Signature</span>
                 </div>
                 <button
                   onClick={() => {
                     setSignatureData(savedSignature);
                     toast.success('Saved signature selected!');
                   }}
-                  style={{
-                    padding: '8px 14px', borderRadius: 9, fontSize: 12, fontWeight: 700,
-                    background: signatureData === savedSignature
-                      ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)',
-                    color: signatureData === savedSignature ? '#34d399' : '#a5b4fc',
-                    border: `1px solid ${signatureData === savedSignature ? 'rgba(16,185,129,0.3)' : 'rgba(99,102,241,0.3)'}`,
-                    cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-                  }}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer font-inherit ${
+                    signatureData === savedSignature
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-600'
+                      : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'
+                  }`}
                 >
-                  {signatureData === savedSignature ? '✓ Selected' : 'Use'}
+                  {signatureData === savedSignature ? 'Selected' : 'Use'}
                 </button>
+              </div>
+              <div className="p-4 flex items-center justify-center bg-gray-50/30">
+                <img src={savedSignature} alt="Saved signature" className="max-h-[60px] max-w-full block" />
               </div>
             </div>
           )}
 
-          {/* Signature creator */}
-          <div style={{
-            background: '#0f172a', border: '1px solid #1e293b',
-            borderRadius: 16, overflow: 'hidden',
-          }}>
-            {/* Tab bar */}
-            <div style={{
-              display: 'flex', borderBottom: '1px solid #1e293b', background: '#0a1628',
-            }}>
+          {/* Signature creation */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="flex">
               {sigTabs.map(t => {
                 const Icon = t.icon;
                 return (
                   <button
                     key={t.key}
                     onClick={() => { setSigTab(t.key); setSignatureData(null); }}
-                    style={{
-                      flex: 1, padding: '12px 0',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      fontSize: 12, fontWeight: sigTab === t.key ? 700 : 500,
-                      color: sigTab === t.key ? '#a5b4fc' : '#475569',
-                      background: 'transparent', border: 'none',
-                      borderBottom: sigTab === t.key ? '2px solid #6366f1' : '2px solid transparent',
-                      cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
-                    }}
+                    className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold border-b-2 transition-all cursor-pointer font-inherit ${
+                      sigTab === t.key
+                        ? 'text-indigo-600 border-indigo-500 bg-white'
+                        : 'text-gray-400 border-transparent hover:text-gray-600 bg-gray-50/50'
+                    }`}
                   >
                     <Icon size={13} /> {t.label}
                   </button>
                 );
               })}
             </div>
-
-            <div style={{ padding: 18 }}>
-              {sigTab === 'draw' && (
-                <DrawTab onSignatureReady={setSignatureData} />
-              )}
-              {sigTab === 'type' && (
-                <TypeTab signerName={signer.name} onSignatureReady={setSignatureData} />
-              )}
-              {sigTab === 'upload' && (
-                <UploadTab savedSignature={savedSignature} onSignatureReady={setSignatureData} />
-              )}
+            <div className="p-4">
+              {sigTab === 'draw' && <DrawTab onSignatureReady={setSignatureData} />}
+              {sigTab === 'type' && <TypeTab signerName={signer.name} onSignatureReady={setSignatureData} />}
+              {sigTab === 'upload' && <UploadTab savedSignature={savedSignature} onSignatureReady={setSignatureData} />}
             </div>
-
-            {/* Save to account checkbox */}
-            <div style={{
-              padding: '12px 18px', borderTop: '1px solid #1e293b',
-              background: '#0a1628',
-            }}>
-              <label style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                cursor: 'pointer', userSelect: 'none',
-              }}>
+            <div className="px-4 py-3 border-t border-gray-100">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={saveToAccount}
                   onChange={e => setSaveToAccount(e.target.checked)}
-                  style={{ width: 14, height: 14, accentColor: '#6366f1' }}
+                  className="w-3.5 h-3.5 accent-indigo-500"
                 />
-                <span style={{ fontSize: 12, color: '#64748b' }}>
-                  Save this signature to my account for future use
-                </span>
+                <span className="text-xs text-gray-500">Save signature for future use</span>
               </label>
             </div>
           </div>
 
-          {/* Signature preview status */}
-          {signatureData && (
-            <div style={{
-              padding: '10px 14px', borderRadius: 12,
-              background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <CheckCircle size={14} style={{ color: '#10b981', flexShrink: 0 }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#34d399' }}>
-                Signature ready — review the fields on the document
-              </span>
+          {/* OTP section */}
+          {otpSent && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3">
+              <p className="text-xs text-gray-500 text-center">
+                OTP sent to <strong className="text-gray-700">{signingData?.signer?.email}</strong>
+              </p>
+              <input
+                type="text"
+                value={otp}
+                onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="Enter OTP"
+                maxLength={6}
+                className={`w-full px-4 py-3 rounded-xl text-lg font-bold text-center tracking-[0.5em] bg-white border ${
+                  otpError ? 'border-red-300' : 'border-gray-200'
+                } text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-inherit box-border`}
+              />
+              {otpError && (
+                <p className="text-xs text-red-500 text-center">{otpError}</p>
+              )}
+            </div>
+          )}
+
+          {/* Signature ready indicator */}
+          {signatureData && !otpSent && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200">
+              <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
+              <span className="text-xs font-semibold text-emerald-700">Signature ready — place it on the document fields</span>
             </div>
           )}
 
           {/* Action buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="flex flex-col gap-2">
             <button
-              onClick={handleSubmit}
+              onClick={otpSent ? handleVerify : handleSign}
               disabled={(otpSent ? verifying : submitting) || !signatureData}
-              style={{
-                width: '100%', padding: '14px 0', borderRadius: 12,
-                fontSize: 15, fontWeight: 700, color: 'white',
-                background: (otpSent ? verifying : submitting) || !signatureData
-                  ? '#1e293b'
-                  : otpSent
-                    ? 'linear-gradient(135deg,#6366f1,#8b5cf6)'
-                    : 'linear-gradient(135deg,#059669,#10b981)',
-                border: 'none',
-                cursor: (otpSent ? verifying : submitting) || !signatureData ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit', transition: 'all 0.2s',
-                boxShadow: (!otpSent && !submitting && signatureData) ? '0 0 28px rgba(16,185,129,0.35)' : 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
+              className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer font-inherit ${
+                (otpSent ? verifying : submitting) || !signatureData
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'
+              }`}
             >
               {otpSent ? (
                 verifying ? 'Verifying…' : 'Verify OTP'
               ) : (
-                <>
-                  <CheckCircle size={16} />
-                  {submitting ? 'Signing document…' : 'Sign Document'}
-                </>
+                <><CheckCircle size={16} />{submitting ? 'Signing…' : 'Sign Document'}</>
               )}
             </button>
 
-            {/* OTP Input - shown after submitting signature */}
-            {otpSent && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
-                <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', margin: 0 }}>
-                  OTP sent to <strong style={{ color: '#e2e8f0' }}>{signingData?.signer?.email}</strong>
-                </p>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                  placeholder="Enter OTP"
-                  maxLength={6}
-                  style={{
-                    width: '100%', boxSizing: 'border-box',
-                    padding: '12px 16px', borderRadius: 10,
-                    fontSize: 18, fontWeight: 700, color: '#e2e8f0',
-                    background: '#1e293b', border: `1px solid ${otpError ? '#ef4444' : '#334155'}`,
-                    outline: 'none', fontFamily: 'inherit', textAlign: 'center',
-                    letterSpacing: '0.5em',
-                  }}
-                />
-                {otpError && (
-                  <p style={{ fontSize: 12, color: '#ef4444', textAlign: 'center', margin: 0 }}>
-                    {otpError}
-                  </p>
-                )}
-              </div>
-            )}
-
             <button
               onClick={() => setShowDecline(true)}
-              style={{
-                width: '100%', padding: '10px 0', borderRadius: 12,
-                fontSize: 13, fontWeight: 600, color: '#f87171',
-                background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
-                cursor: 'pointer', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
+              disabled={submitting || verifying}
+              className="w-full py-3 rounded-xl text-sm font-semibold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-all cursor-pointer font-inherit flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <XCircle size={14} /> Decline to sign
             </button>
           </div>
 
-          {/* Legal note */}
-          <p style={{ fontSize: 10, color: '#1e293b', textAlign: 'center', lineHeight: 1.5 }}>
+          <p className="text-[10px] text-gray-300 text-center leading-relaxed">
             By clicking "Sign Document" you agree that your electronic signature is legally binding.
             Powered by Signflow.
           </p>
