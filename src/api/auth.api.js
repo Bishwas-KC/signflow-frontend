@@ -13,8 +13,17 @@ export const authApi = {
  me: () =>
  api.get('/auth/me').then(r => r.data),
 
- updateProfile: (data) =>
- api.put('/auth/profile', data).then(r => r.data),
+  updateProfile: (data) =>
+  api.put('/auth/profile', data).then(r => r.data),
+
+  uploadAvatar: (file) => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+    return api.post('/auth/avatar', formData).then(r => r.data);
+  },
+
+  changePassword: (data) =>
+  api.post('/auth/change-password', data).then(r => r.data),
 
  googleRedirect: () =>
  api.get('/auth/google/redirect').then(r => r.data),

@@ -64,32 +64,32 @@ export default function SigningAuthPage() {
  minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
  background: '#060d1a', padding: 24,
  }}>
- <div style={{
- maxWidth: 400, textAlign: 'center',
- background: '#0f172a', border: '1px solid #1e293b',
- borderRadius: 20, padding: 40,
- }}>
- <div style={{
- width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)',
- display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
- }}>
- <AlertTriangle size={24} style={{ color: '#ef4444' }} />
- </div>
- <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>
- Link Not Valid
- </h2>
- <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{loadError}</p>
+  <div style={{
+    maxWidth: 400, width: '100%', textAlign: 'center',
+    background: '#0f172a', border: '1px solid #1e293b',
+    borderRadius: 20, padding: 40,
+  }}>
+  <div style={{
+    width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+  }}>
+  <AlertTriangle size={24} style={{ color: '#ef4444' }} />
+  </div>
+  <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>
+  Link Not Valid
+  </h2>
+  <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, wordBreak: 'break-word' }}>{loadError}</p>
  </div>
  </div>
  );
  }
 
  return (
- <div style={{
- minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
- background: '#060d1a',
- }}>
- <div style={{ textAlign: 'center' }}>
+  <div style={{
+    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: '#060d1a', padding: 24,
+  }}>
+  <div style={{ textAlign: 'center' }}>
  <Spinner size="lg" />
  <p style={{ color: '#334155', fontSize: 13, marginTop: 16 }}>Loading invitation…</p>
  </div>

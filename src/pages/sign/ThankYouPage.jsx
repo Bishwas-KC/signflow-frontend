@@ -14,7 +14,7 @@ export default function ThankYouPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200/70 shadow-sm p-10 text-center">
+      <div className="max-w-md w-full bg-white rounded-2xl border border-gray-200/70 shadow-sm p-6 sm:p-10 text-center">
         <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5 ${
           declined ? 'bg-red-50' : 'bg-emerald-50'
         }`}>
@@ -44,7 +44,7 @@ export default function ThankYouPage() {
         </div>
 
         <div className="flex flex-col gap-2.5">
-          <div className="flex gap-2.5">
+          <div className="flex flex-col sm:flex-row gap-2.5">
             <button
               onClick={() => navigate('/dashboard')}
               className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all cursor-pointer font-inherit"

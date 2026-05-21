@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/Button';
 import {
   PenLine, Type, Upload, CheckCircle, XCircle,
   AlertTriangle, RotateCcw, FileText,
-  Bookmark, Trash2, LogOut, Clock,
+  Bookmark, Trash2, LogOut, Clock, User, ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Badge } from '@/components/ui/Badge';
 
 pdfjs.GlobalWorkerOptions.workerSrc =
   `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -36,7 +37,7 @@ function logout() {
   localStorage.removeItem('user');
 }
 
-function DrawTab({ onSignatureReady }) {
+function DrawTab({ onSignatureReady, saveToAccount, setSaveToAccount, signatureData }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const lastPt = useRef(null);
@@ -97,7 +98,7 @@ function DrawTab({ onSignatureReady }) {
           ref={canvasRef}
           width={560}
           height={180}
-          className="w-full h-[180px] block cursor-crosshair touch-none"
+          className="w-full h-[140px] block cursor-crosshair touch-none"
           onPointerDown={start}
           onPointerMove={move}
           onPointerUp={stop}
@@ -118,11 +119,29 @@ function DrawTab({ onSignatureReady }) {
           </Button>
         </div>
       )}
+
+      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={saveToAccount}
+            onChange={e => setSaveToAccount(e.target.checked)}
+            className="w-3.5 h-3.5 accent-indigo-500"
+          />
+          <span className="text-xs text-gray-500">Save for future</span>
+        </label>
+        {signatureData && (
+          <div className="flex items-center gap-1.5 text-emerald-600">
+            <CheckCircle size={12} />
+            <span className="text-[11px] font-semibold">Ready</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function TypeTab({ signerName, onSignatureReady }) {
+function TypeTab({ signerName, onSignatureReady, saveToAccount, setSaveToAccount, signatureData }) {
   const [text, setText] = useState(signerName || '');
   const [fontIdx, setFontIdx] = useState(0);
   const canvasRef = useRef(null);
@@ -170,7 +189,7 @@ function TypeTab({ signerName, onSignatureReady }) {
   const font = SIGNATURE_FONTS[fontIdx];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <input
         value={text}
         onChange={e => setText(e.target.value)}
@@ -195,23 +214,53 @@ function TypeTab({ signerName, onSignatureReady }) {
       </div>
       <canvas ref={canvasRef} width={560} height={180} className="hidden" />
       {text.trim() ? (
-        <div className="p-5 rounded-xl bg-white border border-gray-200 text-center min-h-[80px] flex items-center justify-center">
+        <div className="p-5 rounded-xl bg-white border border-gray-200 text-center h-[140px] flex items-center justify-center">
           <span style={{ fontFamily: font.css, fontSize: 48, color: '#1e293b', fontWeight: 700 }}>
             {text}
           </span>
         </div>
       ) : (
-        <div className="p-5 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-center text-gray-400 text-xs">
+        <div className="p-5 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-center text-gray-400 text-xs h-[140px] flex items-center justify-center">
           Type your name above to preview
         </div>
       )}
+
+      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={saveToAccount}
+            onChange={e => setSaveToAccount(e.target.checked)}
+            className="w-3.5 h-3.5 accent-indigo-500"
+          />
+          <span className="text-xs text-gray-500">Save for future</span>
+        </label>
+        {signatureData && (
+          <div className="flex items-center gap-1.5 text-emerald-600">
+            <CheckCircle size={12} />
+            <span className="text-[11px] font-semibold">Ready</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function UploadTab({ savedSignature, onSignatureReady }) {
+function UploadTab({ savedSignatures, onSignatureReady, saveToAccount, setSaveToAccount, signatureData }) {
   const [preview, setPreview] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const inputRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const toPngDataUri = (dataUri) => {
     return new Promise((resolve) => {
@@ -243,11 +292,6 @@ function UploadTab({ savedSignature, onSignatureReady }) {
     reader.readAsDataURL(file);
   };
 
-  const useSaved = useCallback(() => {
-    setPreview(savedSignature);
-    onSignatureReady(savedSignature);
-  }, [savedSignature, onSignatureReady]);
-
   const clear = useCallback(() => {
     setPreview(null);
     onSignatureReady(null);
@@ -255,41 +299,51 @@ function UploadTab({ savedSignature, onSignatureReady }) {
   }, [onSignatureReady]);
 
   return (
-    <div className="flex flex-col gap-3">
-      {savedSignature && !preview && (
-        <div className="rounded-xl border border-gray-200 overflow-hidden">
-          <div className="px-3.5 py-2.5 bg-gray-50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bookmark size={13} className="text-indigo-400" />
-              <span className="text-xs font-semibold text-gray-500">Saved signature</span>
+    <div className="flex flex-col gap-2">
+      {savedSignatures.length > 0 && (
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 text-sm font-semibold text-gray-700 hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer font-inherit"
+          >
+            <span>Select your saved signature ({savedSignatures.length})</span>
+            <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {dropdownOpen && (
+            <div className="absolute top-full left-0 right-0 mt-1 z-20 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+              {savedSignatures.map((sig) => (
+                <button
+                  key={sig.id}
+                  onClick={() => { onSignatureReady(sig.data_uri); setDropdownOpen(false); }}
+                  className="w-full flex items-center gap-3 px-3.5 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer font-inherit border-b border-gray-50 last:border-b-0"
+                >
+                  <img src={sig.data_uri} alt="" className="h-8 max-w-[80px] object-contain flex-shrink-0" />
+                  <span className="text-xs text-gray-600 truncate flex-1 text-left">{sig.label || 'Saved signature'}</span>
+                  <span className="text-[11px] font-bold text-indigo-600 flex-shrink-0">Select</span>
+                </button>
+              ))}
             </div>
-            <button
-              onClick={useSaved}
-              className="px-3 py-1 rounded-md text-[11px] font-bold bg-indigo-50 text-indigo-600 border border-indigo-200 cursor-pointer font-inherit"
-            >
-              Use this
-            </button>
-          </div>
-          <div className="bg-white p-3 text-center">
-            <img src={savedSignature} alt="Saved signature" className="max-h-[70px] max-w-full inline-block" />
-          </div>
+          )}
+          <div className="border-t border-gray-100 my-2" />
         </div>
       )}
 
       {!preview ? (
         <div
           onClick={() => inputRef.current?.click()}
-          className="py-8 px-5 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-center cursor-pointer hover:border-indigo-400 transition-colors"
+          className="h-[140px] flex items-center justify-center px-5 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-center cursor-pointer hover:border-indigo-400 transition-colors"
         >
-          <Upload size={24} className="text-gray-300 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-gray-500 mb-1">Click to upload your signature</p>
-          <p className="text-[11px] text-gray-400">PNG, JPG, SVG — max 2 MB</p>
+          <div>
+            <Upload size={24} className="text-gray-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-gray-500 mb-1">Click to upload a new signature</p>
+            <p className="text-[11px] text-gray-400">PNG, JPG, SVG — max 2 MB</p>
+          </div>
           <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 overflow-hidden">
-          <div className="bg-white p-5 text-center">
-            <img src={preview} alt="Signature preview" className="max-h-[120px] max-w-full inline-block" />
+          <div className="h-[140px] flex items-center justify-center bg-white">
+            <img src={preview} alt="Signature preview" className="max-h-[140px] max-w-full object-contain" />
           </div>
           <div className="px-3.5 py-2.5 bg-gray-50 flex items-center justify-between">
             <span className="text-[11px] text-gray-400">Signature ready</span>
@@ -302,6 +356,24 @@ function UploadTab({ savedSignature, onSignatureReady }) {
           </div>
         </div>
       )}
+
+      <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={saveToAccount}
+            onChange={e => setSaveToAccount(e.target.checked)}
+            className="w-3.5 h-3.5 accent-indigo-500"
+          />
+          <span className="text-xs text-gray-500">Save for future</span>
+        </label>
+        {signatureData && (
+          <div className="flex items-center gap-1.5 text-emerald-600">
+            <CheckCircle size={12} />
+            <span className="text-[11px] font-semibold">Ready</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -348,7 +420,7 @@ export default function SigningPage() {
   const [user] = useState(getCurrentUser);
 
   const [signingData, setSigningData] = useState(null);
-  const [savedSignature, setSavedSignature] = useState(null);
+  const [savedSignatures, setSavedSignatures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [emailMismatch, setEmailMismatch] = useState(false);
@@ -359,7 +431,7 @@ export default function SigningPage() {
   const [pageH, setPageH] = useState(1123);
   const [pdfError, setPdfError] = useState(false);
 
-  const [sigTab, setSigTab] = useState('draw');
+  const [sigTab, setSigTab] = useState('upload');
   const [signatureData, setSignatureData] = useState(null);
   const [saveToAccount, setSaveToAccount] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -370,6 +442,9 @@ export default function SigningPage() {
   const [otp, setOtp] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [resending, setResending] = useState(false);
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [otpKey, setOtpKey] = useState(0);
 
   useEffect(() => {
     if (!localStorage.getItem('token')) {
@@ -382,7 +457,7 @@ export default function SigningPage() {
       try {
         const [sigRes, savedRes] = await Promise.allSettled([
           signApi.getSigningData(token),
-          signApi.getSavedSignature(),
+          signApi.getSavedSignatures(),
         ]);
 
         if (sigRes.status === 'fulfilled') {
@@ -402,8 +477,11 @@ export default function SigningPage() {
           setLoadError(sigRes.reason?.response?.data?.message || 'Invalid signing link.');
         }
 
-        if (savedRes.status === 'fulfilled' && savedRes.value.data.has_signature) {
-          setSavedSignature(savedRes.value.data.saved_signature);
+        if (savedRes.status === 'fulfilled') {
+          const sigs = savedRes.value.data;
+          if (Array.isArray(sigs)) {
+            setSavedSignatures(sigs);
+          }
         }
       } finally {
         setLoading(false);
@@ -438,6 +516,19 @@ export default function SigningPage() {
     return () => { alive = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [signingData?.document?.preview_url]);
 
+  // OTP countdown timer
+  useEffect(() => {
+    if (!otpSent) { setOtpCountdown(0); return; }
+    setOtpCountdown(60);
+    const interval = setInterval(() => {
+      setOtpCountdown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpKey]);
+
   const onPdfLoad = useCallback(async (pdfProxy) => {
     setTotalPages(pdfProxy.numPages);
     try {
@@ -463,10 +554,14 @@ export default function SigningPage() {
     setSubmitting(true);
     try {
       if (saveToAccount) {
-        await signApi.saveSignature(signatureData).catch(() => {});
+        const res = await signApi.saveNewSignature(signatureData).catch(() => {});
+        if (res?.data) {
+          setSavedSignatures(prev => [{ ...res.data, data_uri: res.data.data_uri || signatureData }, ...prev]);
+        }
       }
       await signApi.submit(token, signatureData);
       setOtpSent(true);
+      setOtpKey(k => k + 1);
       toast.success('OTP sent to your email! Please check your inbox.');
     } catch (err) {
       const code = err?.response?.data?.error?.code;
@@ -497,6 +592,23 @@ export default function SigningPage() {
     }
   };
 
+  const handleResendOtp = async () => {
+    if (!signatureData) return;
+    setResending(true);
+    setOtpError('');
+    setOtp('');
+    try {
+      await signApi.submit(token, signatureData);
+      setOtpSent(true);
+      setOtpKey(k => k + 1);
+      toast.success('OTP resent to your email!');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to resend OTP.');
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleDecline = async (reason) => {
     setDeclining(true);
     try {
@@ -513,7 +625,7 @@ export default function SigningPage() {
 
   const handleLogout = () => {
     logout();
-    navigate(`/sign/${token}/auth`, { replace: true });
+    navigate(`/sign/${token}`, { replace: true });
   };
 
   if (loading) return (
@@ -579,46 +691,40 @@ export default function SigningPage() {
   }
 
   const sigTabs = [
+    { key: 'upload', label: 'Saved Signature', icon: Bookmark },
     { key: 'draw', label: 'Draw', icon: PenLine },
     { key: 'type', label: 'Type', icon: Type },
-    { key: 'upload', label: 'Upload', icon: Upload },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top bar */}
-      <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 px-5">
-        <div className="max-w-7xl mx-auto h-12 flex items-center justify-between gap-4">
-          <p className="text-sm font-bold text-gray-900 truncate min-w-0">{doc.title}</p>
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-xs text-gray-400 hidden sm:inline">{signer.email}</span>
-            <button
-              onClick={handleLogout}
-              className="text-xs font-semibold text-gray-400 hover:text-gray-600 transition-all cursor-pointer font-inherit"
-            >
-              Log out
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto p-5 lg:p-8 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
-        {/* PDF preview */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-            <FileText size={14} className="text-gray-400" />
-            <span className="text-xs font-semibold text-gray-500">
-              {signingData.total_fields} field{signingData.total_fields > 1 ? 's' : ''} on {signingData.pages_to_sign.length} page{signingData.pages_to_sign.length > 1 ? 's' : ''}
-            </span>
-            <div className="ml-auto flex flex-wrap gap-1.5">
-              {signingData.pages_to_sign.map(p => (
-                <span key={p} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">
-                  P{p}
+    <div className="h-screen flex flex-col bg-gray-50">
+      <div className="flex-1 p-5 lg:p-8 pt-3 lg:pt-4 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 min-h-0">
+        {/* ── PDF Preview ── */}
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-0">
+          <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-bold text-gray-900 truncate">{doc.title}</h2>
+                {doc.description && (
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{doc.description}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <FileText size={14} className="text-gray-400" />
+                <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">
+                  {signingData.total_fields} field{signingData.total_fields > 1 ? 's' : ''} on {signingData.pages_to_sign.length} page{signingData.pages_to_sign.length > 1 ? 's' : ''}
                 </span>
-              ))}
+                <div className="flex flex-wrap gap-1.5">
+                  {signingData.pages_to_sign.map(p => (
+                    <span key={p} className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-600 border border-amber-200">
+                      P{p}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="overflow-y-auto max-h-[75vh] bg-gray-50/50 py-4">
+          <div className="flex-1 overflow-y-auto bg-gray-50/50 py-4 min-h-0">
             {pdfBlobUrl ? (
               <div className="flex justify-center">
                 <div className="relative" style={{ width: pageW }}>
@@ -644,26 +750,35 @@ export default function SigningPage() {
                             return (
                               <div
                                 key={field.id}
-                                className={`absolute border-2 rounded-md flex items-center justify-center transition-all cursor-default z-10 overflow-hidden ${
+                                className={`absolute border-2 rounded-md transition-all cursor-default z-10 overflow-hidden ${
                                   signed ? 'border-emerald-400 bg-emerald-50/20' : 'border-amber-400 bg-amber-50/20'
                                 }`}
                                 style={{
                                   left: field.position.x,
                                   top: field.position.y,
                                   width: field.position.width || 200,
-                                  height: field.position.height || 60,
+                                  height: field.position.height || 120,
                                 }}
                               >
-                                {signed ? (
-                                  <img
-                                    src={signatureData}
-                                    alt="signature"
-                                    className="max-w-full max-h-full object-contain"
-                                  />
+                                  {signed ? (
+                                  <div className="flex flex-col items-start h-full p-1">
+                                    <img
+                                      src={signatureData}
+                                      alt="signature"
+                                      className="self-start max-w-full max-h-[70%] object-contain object-left flex-shrink-0"
+                                    />
+                                    <div className="text-left leading-tight flex-shrink-0">
+                                      <p className="text-[9px] font-bold text-emerald-700">Signed by {signer.name}</p>
+                                      <p className="text-[8px] text-gray-500 truncate max-w-full">{signer.email}</p>
+                                      <p className="text-[8px] text-gray-400">{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+                                    </div>
+                                  </div>
                                 ) : (
-                                  <div className="text-center">
-                                    <PenLine size={14} className="text-amber-500 mx-auto" />
-                                    <p className="text-[9px] text-amber-600 mt-0.5 font-bold">SIGN HERE</p>
+                                  <div className="flex items-center justify-center h-full">
+                                    <div className="text-center">
+                                      <PenLine size={14} className="text-amber-500 mx-auto" />
+                                      <p className="text-[9px] text-amber-600 mt-0.5 font-bold">SIGN HERE</p>
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -690,57 +805,55 @@ export default function SigningPage() {
           </div>
         </div>
 
-        {/* Signing panel */}
-        <div className="flex flex-col gap-4">
+        {/* ── Signing Panel ── */}
+        <div className="flex flex-col gap-3">
 
-          {/* Signer info */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Signing as</p>
-            <p className="text-sm font-bold text-gray-900">{signer.name}</p>
-            <p className="text-xs text-gray-500">{signer.email}</p>
+          {/* Sent by + Signer Info */}
+          <div className="bg-white border border-gray-200">
+            {doc.owner && (
+              <div className="flex items-center gap-3 p-3 border-b border-gray-100">
+                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <User size={18} className="text-indigo-500" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Sent by</p>
+                  <p className="text-sm font-bold text-gray-900 truncate">{doc.owner.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{doc.owner.email}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3 p-3">
+              <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <User size={18} className="text-indigo-500" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Signing as</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{signer.name}</p>
+                <p className="text-xs text-gray-500 truncate">{signer.email}</p>
+              </div>
+              <Badge size="xs" className="bg-indigo-50 text-indigo-600 border-indigo-200 font-bold">
+                Signer
+              </Badge>
+            </div>
           </div>
 
-          {/* Saved signature */}
-          {savedSignature && (
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bookmark size={13} className="text-indigo-400" />
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Saved Signature</span>
-                </div>
-                <button
-                  onClick={() => {
-                    setSignatureData(savedSignature);
-                    toast.success('Saved signature selected!');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all cursor-pointer font-inherit ${
-                    signatureData === savedSignature
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-600'
-                      : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'
-                  }`}
-                >
-                  {signatureData === savedSignature ? 'Selected' : 'Use'}
-                </button>
-              </div>
-              <div className="p-4 flex items-center justify-center bg-gray-50/30">
-                <img src={savedSignature} alt="Saved signature" className="max-h-[60px] max-w-full block" />
-              </div>
-            </div>
-          )}
-
-          {/* Signature creation */}
-          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-            <div className="flex">
+          {/* Signature Creation */}
+          <div className={`bg-white border transition-all ${
+            signatureData ? 'border-emerald-300 ring-1 ring-emerald-200' : 'border-gray-200'
+          }`}>
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 bg-gray-100/80">
               {sigTabs.map(t => {
                 const Icon = t.icon;
+                const active = sigTab === t.key;
                 return (
                   <button
                     key={t.key}
                     onClick={() => { setSigTab(t.key); setSignatureData(null); }}
-                    className={`flex-1 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold border-b-2 transition-all cursor-pointer font-inherit ${
-                      sigTab === t.key
-                        ? 'text-indigo-600 border-indigo-500 bg-white'
-                        : 'text-gray-400 border-transparent hover:text-gray-600 bg-gray-50/50'
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer font-inherit ${
+                      active
+                        ? 'bg-white text-indigo-600 shadow-sm border border-gray-200'
+                        : 'text-gray-400 hover:text-gray-600'
                     }`}
                   >
                     <Icon size={13} /> {t.label}
@@ -748,85 +861,87 @@ export default function SigningPage() {
                 );
               })}
             </div>
-            <div className="p-4">
-              {sigTab === 'draw' && <DrawTab onSignatureReady={setSignatureData} />}
-              {sigTab === 'type' && <TypeTab signerName={signer.name} onSignatureReady={setSignatureData} />}
-              {sigTab === 'upload' && <UploadTab savedSignature={savedSignature} onSignatureReady={setSignatureData} />}
-            </div>
-            <div className="px-4 py-3 border-t border-gray-100">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={saveToAccount}
-                  onChange={e => setSaveToAccount(e.target.checked)}
-                  className="w-3.5 h-3.5 accent-indigo-500"
-                />
-                <span className="text-xs text-gray-500">Save signature for future use</span>
-              </label>
+
+            {/* Tab Content */}
+            <div className="p-3 min-h-[300px]">
+              {sigTab === 'draw' && <DrawTab onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} />}
+              {sigTab === 'type' && <TypeTab signerName={signer.name} onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} />}
+              {sigTab === 'upload' && <UploadTab savedSignatures={savedSignatures} onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} />}
             </div>
           </div>
 
-          {/* OTP section */}
-          {otpSent && (
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm space-y-3">
-              <p className="text-xs text-gray-500 text-center">
-                OTP sent to <strong className="text-gray-700">{signingData?.signer?.email}</strong>
-              </p>
-              <input
-                type="text"
-                value={otp}
-                onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="Enter OTP"
-                maxLength={6}
-                className={`w-full px-4 py-3 rounded-xl text-lg font-bold text-center tracking-[0.5em] bg-white border ${
-                  otpError ? 'border-red-300' : 'border-gray-200'
-                } text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-inherit box-border`}
-              />
-              {otpError && (
-                <p className="text-xs text-red-500 text-center">{otpError}</p>
-              )}
-            </div>
-          )}
+          {/* OTP + Actions */}
+          <div className="bg-white border border-gray-200 p-3 space-y-2">
+            {otpSent && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-gray-500 text-center">
+                  OTP sent to <strong className="text-gray-700">{signingData?.signer?.email}</strong>
+                </p>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="Enter OTP"
+                  maxLength={6}
+                  className={`w-full px-4 py-2.5 rounded-xl text-lg font-bold text-center tracking-[0.5em] bg-white border ${
+                    otpError ? 'border-red-300' : 'border-gray-200'
+                  } text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-inherit box-border`}
+                />
+                {otpError && (
+                  <p className="text-xs text-red-500 text-center">{otpError}</p>
+                )}
+                <button
+                  onClick={handleVerify}
+                  disabled={verifying || !otp}
+                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all cursor-pointer font-inherit flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {verifying ? 'Verifying…' : 'Verify OTP'}
+                </button>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-gray-400">
+                    {otpCountdown > 0
+                      ? `OTP expires in ${otpCountdown}s`
+                      : 'OTP expired'}
+                  </span>
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={resending || otpCountdown > 50}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 disabled:text-gray-300 disabled:cursor-not-allowed transition-colors cursor-pointer font-inherit"
+                  >
+                    {resending ? 'Resending…' : 'Resend OTP'}
+                  </button>
+                </div>
+              </div>
+            )}
 
-          {/* Signature ready indicator */}
-          {signatureData && !otpSent && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200">
-              <CheckCircle size={14} className="text-emerald-500 flex-shrink-0" />
-              <span className="text-xs font-semibold text-emerald-700">Signature ready — place it on the document fields</span>
-            </div>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={otpSent ? handleVerify : handleSign}
-              disabled={(otpSent ? verifying : submitting) || !signatureData}
-              className={`w-full py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer font-inherit ${
-                (otpSent ? verifying : submitting) || !signatureData
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'
-              }`}
-            >
-              {otpSent ? (
-                verifying ? 'Verifying…' : 'Verify OTP'
-              ) : (
-                <><CheckCircle size={16} />{submitting ? 'Signing…' : 'Sign Document'}</>
-              )}
-            </button>
+            {!otpSent && (
+              <button
+                onClick={handleSign}
+                disabled={submitting || !signatureData}
+                className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer font-inherit ${
+                  submitting || !signatureData
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-500/20'
+                }`}
+              >
+                <CheckCircle size={16} />
+                {submitting ? 'Signing…' : 'Sign Document'}
+              </button>
+            )}
 
             <button
               onClick={() => setShowDecline(true)}
               disabled={submitting || verifying}
-              className="w-full py-3 rounded-xl text-sm font-semibold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-all cursor-pointer font-inherit flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-2.5 rounded-xl text-sm font-semibold text-red-500 bg-red-50 border border-red-200 hover:bg-red-100 transition-all cursor-pointer font-inherit flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <XCircle size={14} /> Decline to sign
             </button>
-          </div>
 
-          <p className="text-[10px] text-gray-300 text-center leading-relaxed">
-            By clicking "Sign Document" you agree that your electronic signature is legally binding.
-            Powered by Signflow.
-          </p>
+            <p className="text-[10px] text-gray-300 text-center leading-relaxed">
+              By clicking "Sign Document" you agree that your electronic signature is legally binding.
+              Powered by Signflow.
+            </p>
+          </div>
         </div>
       </div>
 

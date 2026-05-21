@@ -15,6 +15,7 @@ const DocumentEditorPage = lazy(() => import('@/pages/documents/DocumentEditorPa
 const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'));
 const ContactsPage = lazy(() => import('@/pages/contacts/ContactsPage'));
 const CompaniesPage = lazy(() => import('@/pages/companies/CompaniesPage'));
+const SigningLayout = lazy(() => import('@/layouts/SigningLayout'));
 const SigningPage = lazy(() => import('@/pages/sign/SigningPage'));
 const SigningAuthPage = lazy(() => import('@/pages/sign/SigningauthPage'));
 const ThankYouPage = lazy(() => import('@/pages/sign/ThankYouPage'));
@@ -32,17 +33,10 @@ const SuspenseFallback = () => (
 );
 
 function ProtectedRoute({ children }) {
- const { user, loading } = useAuth();
- if (loading) return <div className="flex h-screen items-center justify-center"><Spinner size="lg" /></div>;
- if (!user) return <Navigate to="/login" replace />;
- return children;
-}
-
-function GuestRoute({ children }) {
- const { user, loading } = useAuth();
- if (loading) return null;
- if (user) return <Navigate to="/dashboard" replace />;
- return children;
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex h-screen items-center justify-center"><Spinner size="lg" /></div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
 }
 
 function LazyRoute({ children }) {
@@ -59,14 +53,12 @@ export default function App() {
  return (
  <Routes>
  <Route path="/sign/:token" element={<LazyRoute><SigningAuthPage /></LazyRoute>} />
- <Route path="/sign/:token/sign" element={<LazyRoute><SigningPage /></LazyRoute>} />
+
  <Route path="/sign/:token/thank-you" element={<LazyRoute><ThankYouPage /></LazyRoute>} />
  <Route path="/auth/google/callback" element={<LazyRoute><GoogleCallbackPage /></LazyRoute>} />
   <Route path="/" element={<LazyRoute><LandingPage /></LazyRoute>} />
- <Route element={<GuestRoute><AuthLayout /></GuestRoute>}>
- <Route path="/login" element={<LazyRoute><LoginPage /></LazyRoute>} />
- <Route path="/register" element={<LazyRoute><RegisterPage /></LazyRoute>} />
- </Route>
+  <Route path="/login" element={<LazyRoute><AuthLayout><LoginPage /></AuthLayout></LazyRoute>} />
+  <Route path="/register" element={<LazyRoute><AuthLayout><RegisterPage /></AuthLayout></LazyRoute>} />
  <Route path="/auth/verify-email/:id/:token" element={<LazyRoute><EmailVerificationPage /></LazyRoute>} />
  <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
  <Route path="/dashboard" element={<LazyRoute><DashboardPage /></LazyRoute>} />
@@ -74,8 +66,11 @@ export default function App() {
  <Route path="/dashboard/documents/:id" element={<LazyRoute><DocumentDetailPage /></LazyRoute>} />
  <Route path="/dashboard/documents/:id/editor" element={<LazyRoute><DocumentEditorPage /></LazyRoute>} />
  <Route path="/dashboard/contacts" element={<LazyRoute><ContactsPage /></LazyRoute>} />
- <Route path="/dashboard/companies" element={<LazyRoute><CompaniesPage /></LazyRoute>} />
- </Route>
+    <Route path="/dashboard/companies" element={<LazyRoute><CompaniesPage /></LazyRoute>} />
+  </Route>
+   <Route element={<LazyRoute><SigningLayout /></LazyRoute>}>
+   <Route path="/sign/:token/sign" element={<LazyRoute><SigningPage /></LazyRoute>} />
+  </Route>
  <Route path="*" element={<LazyRoute><NotFoundPage /></LazyRoute>} />
  </Routes>
  );

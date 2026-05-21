@@ -10,7 +10,6 @@ import { DocumentHeader } from '@/components/document/DocumentHeader';
 import { DocumentPreview } from '@/components/document/DocumentPreview';
 import { ActionRequiredBanner } from '@/components/document/ActionRequiredBanner';
 import { SigningProgressCard } from '@/components/document/SigningProgressCard';
-import { MetadataCard } from '@/components/document/MetadataCard';
 import {
   FileText, AlertTriangle, XCircle, History,
 } from 'lucide-react';
@@ -39,7 +38,7 @@ function CancelRequestBanner({ doc, onApprove, canApprove }) {
   }
 
   return (
-    <div className="bg-amber-50 border border-amber-200/70 rounded-xl px-5 py-4 flex items-center gap-4">
+    <div className="bg-amber-50 border border-amber-200/70 rounded-xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
       <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
         <AlertTriangle size={20} className="text-amber-600" />
       </div>
@@ -51,7 +50,7 @@ function CancelRequestBanner({ doc, onApprove, canApprove }) {
         <p className="text-xs text-amber-600 mt-1">Awaiting approval from signers who have already signed.</p>
       </div>
       {canApprove && (
-        <Button size="sm" variant="danger" className="rounded-lg flex-shrink-0"
+        <Button size="sm" variant="danger" className="rounded-lg w-full sm:w-auto"
           loading={onApprove.isPending}
           onClick={() => onApprove.mutate()}>
           Approve Cancellation
@@ -63,12 +62,12 @@ function CancelRequestBanner({ doc, onApprove, canApprove }) {
 
 // ── Delete Request Banner ────────────────────────────────────────────────
 
-function DeleteRequestBanner({ doc, onApprove, onReject, canApprove, canReject }) {
+function DeleteRequestBanner({ doc, onApprove, onReject, onCancelDelete, canApprove, canReject, isInitiator }) {
   const dr = doc.deletion_request;
   if (!dr) return null;
 
   return (
-    <div className="bg-red-50 border border-red-200/70 rounded-xl px-5 py-4 flex items-center gap-4">
+    <div className="bg-red-50 border border-red-200/70 rounded-xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
       <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
         <AlertTriangle size={20} className="text-red-600" />
       </div>
@@ -79,16 +78,23 @@ function DeleteRequestBanner({ doc, onApprove, onReject, canApprove, canReject }
         </p>
         <p className="text-xs text-red-600 mt-1">Awaiting approval from all signed signers.</p>
       </div>
-      <div className="flex gap-2 flex-shrink-0">
+      <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+        {isInitiator && (
+          <Button size="sm" variant="secondary" className="rounded-lg flex-1 sm:flex-none"
+            loading={onCancelDelete.isPending}
+            onClick={() => onCancelDelete.mutate()}>
+            Withdraw
+          </Button>
+        )}
         {canApprove && (
-          <Button size="sm" variant="danger" className="rounded-lg"
+          <Button size="sm" variant="danger" className="rounded-lg flex-1 sm:flex-none"
             loading={onApprove.isPending}
             onClick={() => onApprove.mutate()}>
             Approve
           </Button>
         )}
         {canReject && (
-          <Button size="sm" variant="secondary" className="rounded-lg"
+          <Button size="sm" variant="secondary" className="rounded-lg flex-1 sm:flex-none"
             loading={onReject.isPending}
             onClick={() => onReject.mutate()}>
             Reject
@@ -172,6 +178,17 @@ export default function DocumentDetailPage() {
     },
   });
 
+  const deleteMut = useMutation({
+    mutationFn: () => documentApi.delete(id),
+    onSuccess: () => {
+      toast.success('Document deleted successfully.');
+      navigate('/dashboard/documents', { replace: true });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error?.message || 'Failed to delete document.');
+    },
+  });
+
   const requestCancelMut = useMutation({
     mutationFn: () => documentApi.requestCancel(id),
     onSuccess: (res) => {
@@ -209,6 +226,17 @@ export default function DocumentDetailPage() {
     },
     onError: (err) => {
       toast.error(err.response?.data?.error?.message || 'Failed to reject deletion.');
+    },
+  });
+
+  const cancelDeleteMut = useMutation({
+    mutationFn: () => documentApi.cancelDelete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['document', id] });
+      toast.success('Deletion request withdrawn.');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.error?.message || 'Failed to cancel deletion request.');
     },
   });
 
@@ -253,40 +281,38 @@ export default function DocumentDetailPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
+    <div className="px-6 lg:px-8 pt-3 pb-4 lg:pb-6 max-w-7xl mx-auto space-y-4 animate-fade-in">
       {/* Status banners */}
       {doc.status !== 'cancelled' && (
         <>
           <CancelRequestBanner doc={doc} onApprove={approveCancelMut} canApprove={isSignedSigner} />
           <DeleteRequestBanner doc={doc} onApprove={approveDeleteMut} onReject={rejectDeleteMut}
+            onCancelDelete={cancelDeleteMut} isInitiator={isInitiator}
             canApprove={canApproveDelete} canReject={canRejectDelete} />
         </>
       )}
 
-      {/* Header (no Sign Now button — it's in ActionRequiredBanner) */}
+      {/* Header */}
       <DocumentHeader
         doc={doc}
         onCancel={() => setCancelModal(true)}
         onDelete={() => setDeleteFileModal(true)}
       />
 
-      {/* Action required banner — single source of Sign Now */}
-      <ActionRequiredBanner
-        doc={doc}
-        signers={doc.signers}
-        currentSigner={currentSigner}
-        isSignable={isSignable}
-        onSign={() => navigate(`/sign/${doc.my_signing_token}/sign`)}
-      />
-
       {/* Main content */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 xl:grid-cols-12 gap-6">
         <div className="xl:col-span-8">
           <DocumentPreview doc={doc} />
         </div>
         <div className="xl:col-span-4 space-y-5">
+          <ActionRequiredBanner
+            doc={doc}
+            signers={doc.signers}
+            currentSigner={currentSigner}
+            isSignable={isSignable}
+            onSign={() => navigate(`/sign/${doc.my_signing_token}/sign`)}
+          />
           <SigningProgressCard doc={doc} signers={doc.signers} />
-          <MetadataCard doc={doc} />
           <section className="bg-white rounded-2xl border border-gray-200/70 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">
               <History size={16} className="text-indigo-500" />
@@ -331,32 +357,20 @@ export default function DocumentDetailPage() {
         onConfirm={() => {
           if (doc.deletion_request) {
             approveDeleteMut.mutate();
-          } else if (doc.role === 'owner' && doc.status === 'completed') {
-            requestDeleteMut.mutate();
-          } else if (doc.role === 'owner') {
-            deleteFileMut.mutate();
-          } else if (isSignedSigner && doc.status === 'completed') {
+          } else if (['draft', 'pending', 'cancelled'].includes(doc.status)) {
+            deleteMut.mutate();
+          } else {
             requestDeleteMut.mutate();
           }
         }}
-        loading={deleteFileMut.isPending || requestDeleteMut.isPending || approveDeleteMut.isPending || rejectDeleteMut.isPending}
-        title={
-          doc.deletion_request
-            ? "Approve Deletion?"
-            : doc.status === 'completed'
-              ? (doc.role === 'owner' ? "Delete Completed Document?" : "Request Document Deletion?")
-              : "Delete Original File?"
-        }
+        loading={deleteMut.isPending || requestDeleteMut.isPending || approveDeleteMut.isPending}
+        title={doc.deletion_request ? "Approve Deletion?" : "Delete Document?"}
         message={
           doc.deletion_request
             ? "Your approval will permanently delete this document and all associated data."
-            : doc.status === 'completed' && doc.role === 'owner' && isSignedSigner
-              ? "The document will be permanently deleted immediately since you are also a signed signer."
-              : doc.status === 'completed' && doc.role === 'owner'
-                ? "This will create a deletion request requiring all signed signers' approval before the document is permanently deleted."
-                : doc.status === 'completed'
-                  ? "This will send a deletion request to the document owner and other signed signers for approval."
-                  : "The original file will be permanently removed. The signed PDF (if any) will be preserved."
+            : ['draft', 'pending', 'cancelled'].includes(doc.status)
+              ? "This document will be permanently deleted immediately."
+              : "This will create a deletion request requiring approval from all signed signers before the document is permanently deleted."
         }
         confirmLabel={doc.deletion_request ? "Approve Deletion" : "Continue"}
       />

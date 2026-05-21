@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import {
   LayoutDashboard,
@@ -7,9 +7,9 @@ import {
   Users,
   Building2,
   LogOut,
+  PanelLeftClose,
   Menu,
   X,
-  PanelLeftClose,
 } from 'lucide-react';
 import { getInitials } from '@/utils/helpers';
 import { ProfileModal } from '@/components/shared/ProfileModal';
@@ -21,12 +21,12 @@ const navItems = [
   { to: '/dashboard/companies', icon: Building2, label: 'Companies' },
 ];
 
-export default function DashboardLayout() {
+export default function SigningLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = sidebarOpen ? 'hidden' : '';
@@ -39,13 +39,12 @@ export default function DashboardLayout() {
   };
 
   const Sidebar = ({ mobile = false }) => {
-    const isCollapsed = !mobile && collapsed;
+    const sideCollapsed = !mobile && collapsed;
 
     return (
       <div className="flex flex-col h-full bg-white border-r border-gray-100 group">
-        {/* Logo / Expand button */}
-        <div className={`flex items-center py-8 ${isCollapsed ? 'justify-center relative' : 'gap-3 pl-3 pr-4'}`}>
-          {isCollapsed ? (
+        <div className={`flex items-center py-8 ${sideCollapsed ? 'justify-center relative' : 'gap-3 pl-3 pr-4'}`}>
+          {sideCollapsed ? (
             <>
               <div className="w-10 h-10 bg-indigo-600 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-indigo-500/20 flex-shrink-0 transition-opacity duration-200 group-hover:opacity-0">
                 <span className="text-white font-black text-xl">S</span>
@@ -69,7 +68,7 @@ export default function DashboardLayout() {
               {!mobile && (
                 <button
                   onClick={() => setCollapsed(!collapsed)}
-                  className="ml-auto w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                  className="ml-auto w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all"
                   title="Collapse sidebar"
                 >
                   <PanelLeftClose size={20} />
@@ -84,19 +83,18 @@ export default function DashboardLayout() {
           )}
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-2 py-4 space-y-1">
-          <p className={`px-3 text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-4 whitespace-nowrap transition-opacity duration-200 ${isCollapsed ? 'opacity-0' : 'opacity-100'}`}>Main Menu</p>
+          <p className={`px-3 text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-4 whitespace-nowrap transition-opacity duration-200 ${sideCollapsed ? 'opacity-0' : 'opacity-100'}`}>Main Menu</p>
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
               end={to === '/dashboard'}
               onClick={() => setSidebarOpen(false)}
-              title={isCollapsed ? label : undefined}
+              title={sideCollapsed ? label : undefined}
               className={({ isActive }) =>
                 `flex items-center rounded-xl whitespace-nowrap h-12 ${
-                  isCollapsed
+                  sideCollapsed
                     ? 'justify-center px-0 mx-auto w-12'
                     : 'gap-3 px-3 text-sm font-bold'
                 } ${
@@ -107,26 +105,25 @@ export default function DashboardLayout() {
               }
             >
               <Icon size={20} className="flex-shrink-0" />
-              {!isCollapsed && label}
+              {!sideCollapsed && label}
             </NavLink>
           ))}
         </nav>
 
-        {/* User footer */}
         <div className="py-4 border-t border-gray-100">
-          <div className={`flex flex-col items-center gap-3 ${isCollapsed ? '' : 'px-4'}`}>
-            <div className={`flex items-center ${isCollapsed ? 'flex-col gap-2' : 'gap-3 w-full'}`}>
+          <div className={`flex flex-col items-center gap-3 ${sideCollapsed ? '' : 'px-4'}`}>
+            <div className={`flex items-center ${sideCollapsed ? 'flex-col gap-2' : 'gap-3 w-full'}`}>
               <button
                 onClick={() => setProfileOpen(true)}
                 className="w-10 h-10 bg-white border border-gray-200 rounded-xl flex items-center justify-center overflow-hidden text-indigo-700 font-black text-xs flex-shrink-0 hover:border-indigo-400 transition-all shadow-sm group"
-                title={isCollapsed ? 'Edit profile' : undefined}
+                title={sideCollapsed ? 'Edit profile' : undefined}
               >
                 {user?.avatar
                   ? <img src={user.avatar} alt={user.name} className="w-full h-full rounded-full object-cover" />
                   : <span className="group-hover:scale-110 transition-transform">{getInitials(user?.name)}</span>
                 }
               </button>
-              {!isCollapsed && (
+              {!sideCollapsed && (
                 <>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate leading-tight">{user?.name}</p>
@@ -147,7 +144,7 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Desktop sidebar wrapper — this transitions width */}
+      {/* Desktop sidebar */}
       <div className={`hidden lg:block flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
         collapsed ? 'w-[72px]' : 'w-64'
       }`}>
@@ -163,7 +160,9 @@ export default function DashboardLayout() {
           </div>
         </div>
       )}
+
       <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile topbar */}
@@ -174,7 +173,6 @@ export default function DashboardLayout() {
           <span className="font-black text-xl text-gray-900 tracking-tighter">Signflow</span>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 pb-20">
           <div className="min-h-full">
             <Outlet />

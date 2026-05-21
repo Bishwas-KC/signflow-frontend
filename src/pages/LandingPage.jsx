@@ -1,4 +1,3 @@
-import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import {
@@ -81,7 +80,6 @@ function StarRating({ rating }) {
 }
 
 function Navbar() {
-  const { user } = useAuth();
   const scrolled = useScrollTop();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -104,18 +102,10 @@ function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            {user ? (
-              <Link to="/dashboard" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 active:scale-[0.98]">
-                Dashboard <ArrowRight className="w-4 h-4" />
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className="px-5 py-2.5 text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors">Sign In</Link>
-                <Link to="/register" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 active:scale-[0.98]">
-                  Get Started <ArrowRight className="w-4 h-4" />
-                </Link>
-              </>
-            )}
+            <Link to="/login" className="px-5 py-2.5 text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors">Sign In</Link>
+            <Link to="/register" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 active:scale-[0.98]">
+              Get Started <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
 
           <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-gray-600 hover:text-indigo-600">
@@ -132,16 +122,10 @@ function Navbar() {
             <a href="#security" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">Security</a>
             <a href="#faq" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">FAQ</a>
             <hr className="border-gray-100" />
-            {user ? (
-              <Link to="/dashboard" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all">
-                Dashboard
-              </Link>
-            ) : (
-              <div className="space-y-2 pt-1">
-                <Link to="/login" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-2.5 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">Sign In</Link>
-                <Link to="/register" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all">Get Started</Link>
-              </div>
-            )}
+            <div className="space-y-2 pt-1">
+              <Link to="/login" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-2.5 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">Sign In</Link>
+              <Link to="/register" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all">Get Started</Link>
+            </div>
           </div>
         </div>
       )}
@@ -150,7 +134,6 @@ function Navbar() {
 }
 
 function Hero() {
-  const { user } = useAuth();
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950">
       <div className="absolute inset-0 pointer-events-none">
@@ -176,20 +159,12 @@ function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 reveal">
-            {user ? (
-              <Link to="/dashboard" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-900 text-base font-bold rounded-2xl hover:bg-indigo-50 transition-all shadow-2xl shadow-indigo-500/25 active:scale-[0.98]">
-                Go to Dashboard <ArrowRight className="w-5 h-5" />
-              </Link>
-            ) : (
-              <>
-                <Link to="/register" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-900 text-base font-bold rounded-2xl hover:bg-indigo-50 transition-all shadow-2xl shadow-indigo-500/25 active:scale-[0.98]">
-                  Start Free Trial <ArrowRight className="w-5 h-5" />
-                </Link>
-                <Link to="/login" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white/10 backdrop-blur-sm text-white text-base font-semibold rounded-2xl border border-white/20 hover:bg-white/20 transition-all active:scale-[0.98]">
-                  Sign In <ChevronRight className="w-5 h-5" />
-                </Link>
-              </>
-            )}
+            <Link to="/register" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-900 text-base font-bold rounded-2xl hover:bg-indigo-50 transition-all shadow-2xl shadow-indigo-500/25 active:scale-[0.98]">
+              Start Free Trial <ArrowRight className="w-5 h-5" />
+            </Link>
+            <Link to="/login" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white/10 backdrop-blur-sm text-white text-base font-semibold rounded-2xl border border-white/20 hover:bg-white/20 transition-all active:scale-[0.98]">
+              Sign In <ChevronRight className="w-5 h-5" />
+            </Link>
           </div>
 
           <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-indigo-300/70 reveal">
@@ -390,7 +365,6 @@ function FAQSection() {
 }
 
 function CtaSection() {
-  const { user } = useAuth();
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 py-20 lg:py-28">
       <div className="absolute inset-0 pointer-events-none">
@@ -405,15 +379,9 @@ function CtaSection() {
         <p className="text-lg text-indigo-200/80 mb-10 max-w-xl mx-auto">
           Join thousands of professionals who trust SignFlow for secure, hassle-free digital signing.
         </p>
-        {user ? (
-          <Link to="/dashboard" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-900 text-base font-bold rounded-2xl hover:bg-indigo-50 transition-all shadow-2xl shadow-indigo-500/25 active:scale-[0.98]">
-            Go to Dashboard <ArrowRight className="w-5 h-5" />
-          </Link>
-        ) : (
           <Link to="/register" className="inline-flex items-center gap-2 px-8 py-3.5 bg-white text-indigo-900 text-base font-bold rounded-2xl hover:bg-indigo-50 transition-all shadow-2xl shadow-indigo-500/25 active:scale-[0.98]">
             Get Started Free <ArrowRight className="w-5 h-5" />
           </Link>
-        )}
         <p className="mt-4 text-sm text-indigo-300/60">No credit card required. Start your free trial today.</p>
       </div>
     </section>

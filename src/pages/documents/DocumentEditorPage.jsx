@@ -27,6 +27,7 @@ import {
   ChevronUp,
   GripVertical,
   Clock,
+  Menu,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -695,7 +696,13 @@ export default function DocumentEditorPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [pageW, setPageW] = useState(DEFAULT_PAGE_W);
   const [pageH, setPageH] = useState(DEFAULT_PAGE_H);
-  const [pageSizeLabel, setPageSizeLabel] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [sidebarOpen]);
+
 
   const { data, isLoading, refetch } = useQuery({
   queryKey: ['document', id],
@@ -712,11 +719,12 @@ export default function DocumentEditorPage() {
     }
   }, [doc?.expires_at]);
 
-  const handleUpdateExpiry = async () => {
+  const handleUpdateExpiry = async (e) => {
+    const val = e.target.value;
+    setExpiryDate(val);
     try {
-      const val = expiryDate ? expiryDate.replace('T', ' ') + ':00' : null;
-      await documentApi.update(id, { expires_at: val });
-      toast.success('Expiry date updated');
+      const saveVal = val ? val.replace('T', ' ') + ':00' : null;
+      await documentApi.update(id, { expires_at: saveVal });
       refetch();
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Failed to update expiry date');
@@ -742,7 +750,7 @@ export default function DocumentEditorPage() {
 
  setPageW(detectedW);
  setPageH(detectedH);
- setPageSizeLabel(guessSizeLabel(detectedW, detectedH));
+
  } catch (e) {
  console.warn('Could not detect PDF page size:', e);
  }
@@ -795,105 +803,125 @@ export default function DocumentEditorPage() {
  </div>
  );
 
- const signers = doc.signers || [];
- const fields = doc.fields || [];
- const pdfUrl = doc.file?.preview_url ?? doc.file?.original_url;
+  const signers = doc.signers || [];
+  const fields = doc.fields || [];
+  const pdfUrl = doc.file?.preview_url ?? doc.file?.original_url;
 
- return (
- <div className="flex h-screen overflow-hidden bg-gray-50">
- {/* Sidebar */}
- <div className="w-80 flex-shrink-0 flex flex-col overflow-hidden bg-white border-r border-gray-200 z-20">
- {/* Header */}
- <div className="px-5 py-4 border-b border-gray-100">
- <button
- onClick={() => navigate(`/dashboard/documents/${id}`)}
- className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 mb-3 group"
- >
- <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
- Back
- </button>
- <h1 className="text-base font-semibold text-gray-900 truncate">{doc.title}</h1>
- <div className="flex items-center gap-2 mt-2">
- <Badge variant="indigo" size="xs">{doc.signing_mode}</Badge>
- <span className="text-xs text-gray-400">{doc.status_label}</span>
- </div>
- </div>
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-gray-100">
+        <button
+          onClick={() => navigate(`/dashboard/documents/${id}`)}
+          className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 mb-3 group"
+        >
+          <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
+          Back
+        </button>
+        <h1 className="text-base font-semibold text-gray-900 truncate">{doc.title}</h1>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-xs text-gray-400">{totalPages} pages</span>
+          <span className="text-gray-300">·</span>
+          <Badge variant="indigo" size="xs">{doc.signing_mode}</Badge>
+          <span className="text-xs text-gray-400">{doc.status_label}</span>
+        </div>
+      </div>
 
-  {/* PDF info */}
-  <div className="px-5 py-2 border-b border-gray-50 bg-gray-50/50">
-  <span className="text-xs text-gray-400">{totalPages} pages · {pageSizeLabel}</span>
-  </div>
+      {/* Expiry date editor */}
+      <div className="px-5 py-3 border-b border-gray-100">
+        <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1.5">
+          <Clock size={12} /> Expiry Date
+        </label>
+        <input
+          type="datetime-local"
+          value={expiryDate}
+          onChange={handleUpdateExpiry}
+          min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
+        />
+      </div>
 
-  {/* Expiry date editor */}
-  <div className="px-5 py-3 border-b border-gray-100">
-  <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1.5">
-  <Clock size={12} /> Expiry Date
-  </label>
-  <div className="flex gap-2">
-  <input
-  type="datetime-local"
-  value={expiryDate}
-  onChange={e => setExpiryDate(e.target.value)}
-  min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
-  className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
-  />
-  <Button size="xs" variant="secondary" onClick={handleUpdateExpiry}
-  disabled={doc?.expires_at && expiryDate === new Date(doc.expires_at).toISOString().slice(0, 16)}>
-  Save
-  </Button>
-  </div>
-  {!expiryDate && <p className="text-[10px] text-gray-400 mt-1">No expiry — document never expires</p>}
-  </div>
+      {/* Signers section - takes most of the space */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-medium text-gray-500">Signers</p>
+          <button
+            onClick={() => setSignerModal(true)}
+            className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+          >
+            <UserPlus size={13} /> Add
+          </button>
+        </div>
 
-  {/* Signers section - takes most of the space */}
- <div className="flex-1 overflow-y-auto p-4 space-y-3">
- <div className="flex items-center justify-between mb-1">
- <p className="text-xs font-medium text-gray-500">Signers</p>
- <button
- onClick={() => setSignerModal(true)}
- className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
- >
- <UserPlus size={13} /> Add
- </button>
- </div>
+        {signers.length === 0 ? (
+          <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+            <UserPlus size={24} className="mx-auto text-gray-300 mb-2" />
+            <p className="text-xs text-gray-400 mb-3">Add a signer to start</p>
+            <Button size="sm" variant="secondary" onClick={() => setSignerModal(true)}>Add Signer</Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {signers.map((signer, i) => (
+              <SignerCard
+                key={signer.id}
+                signer={signer}
+                signerIndex={i}
+                documentId={id}
+                totalPages={totalPages}
+                allFields={fields}
+                pageW={pageW}
+                pageH={pageH}
+                onRemove={handleRemoveSigner}
+                onApplied={refetch}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
- {signers.length === 0 ? (
- <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
- <UserPlus size={24} className="mx-auto text-gray-300 mb-2" />
- <p className="text-xs text-gray-400 mb-3">Add a signer to start</p>
- <Button size="sm" variant="secondary" onClick={() => setSignerModal(true)}>Add Signer</Button>
- </div>
- ) : (
- <div className="space-y-2">
- {signers.map((signer, i) => (
- <SignerCard
- key={signer.id}
- signer={signer}
- signerIndex={i}
- documentId={id}
- totalPages={totalPages}
- allFields={fields}
- pageW={pageW}
- pageH={pageH}
- onRemove={handleRemoveSigner}
- onApplied={refetch}
- />
- ))}
- </div>
- )}
- </div>
+      {/* Send panel - compact at bottom */}
+      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+        <SendPanel documentId={id} onSent={() => {
+          queryClient.invalidateQueries({ queryKey: ['documents'] });
+          navigate(`/dashboard/documents/${id}`);
+        }} />
+      </div>
+    </div>
+  );
 
- {/* Send panel - compact at bottom */}
- <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
- <SendPanel documentId={id} onSent={() => {
-	queryClient.invalidateQueries({ queryKey: ['documents'] });
- navigate(`/dashboard/documents/${id}`);
- }} />
- </div>
- </div>
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex w-80 flex-shrink-0 flex-col overflow-hidden bg-white border-r border-gray-200 z-20">
+        {sidebarContent}
+      </div>
 
- {/* Canvas */}
- <div className="flex-1 overflow-auto flex justify-center py-8 px-8 bg-gray-100/50 relative">
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-fade-in" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 h-full z-50 w-80 animate-slide-right shadow-xl">
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+
+      {/* Canvas */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile banner */}
+        <div className="lg:hidden px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 font-medium text-center">
+          For best experience, use a tablet or desktop.
+        </div>
+
+        {/* Mobile toggle bar */}
+        <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-200 bg-white">
+          <button onClick={() => setSidebarOpen(true)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-all">
+            <Menu size={20} />
+          </button>
+          <span className="text-sm font-semibold text-gray-900 truncate">{doc.title}</span>
+        </div>
+
+        <div className="flex-1 overflow-auto flex justify-center py-8 px-4 lg:px-8 bg-gray-100/50 relative">
  <div style={{ width: pageW }} className="animate-fade-in">
  {/* Canvas toolbar */}
  <div className="flex items-center justify-between px-4 py-2 rounded-lg mb-6 bg-white border border-gray-200 shadow-sm">
@@ -971,12 +999,13 @@ export default function DocumentEditorPage() {
  <div className="flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: pageH }}>
  <p className="text-xs text-gray-400">No preview available</p>
  </div>
- )}
- </div>
- </div>
- </div>
+  )}
+  </div>
+  </div>
+  </div>
+  </div>
 
- <AddSignerModal open={signerModal} onClose={() => setSignerModal(false)} documentId={id} onAdded={refetch} />
- </div>
+  <AddSignerModal open={signerModal} onClose={() => setSignerModal(false)} documentId={id} onAdded={refetch} />
+  </div>
  );
 }

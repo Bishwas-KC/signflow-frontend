@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FileText, Eye, Edit3, Trash2, Calendar, Users, ArrowUpRight } from 'lucide-react';
+import { FileText, Eye, Edit3, Trash2, Calendar, Users, ArrowUpRight, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { STATUS_COLORS, STATUS_LABELS } from '@/utils/constants';
 import { formatDate } from '@/utils/helpers';
@@ -13,12 +13,13 @@ function SignerBadge() {
   );
 }
 
-export function DocumentCard({ doc, onDelete }) {
+export function DocumentCard({ doc, onDelete, onRestore }) {
   const progress = doc.progress ?? 0;
   const signed = doc.counts?.signed_count ?? 0;
   const total = doc.counts?.total_signers ?? 0;
   const isEditable = ['draft', 'pending'].includes(doc.status);
-  const isDeletable = doc.role === 'owner' && doc.status !== 'in_progress';
+  const isDeletable = doc.can_delete;
+  const isRestorable = doc.can_restore;
 
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-200/70 hover:border-indigo-200/70 shadow-sm hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 flex flex-col">
@@ -78,12 +79,14 @@ export function DocumentCard({ doc, onDelete }) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-          <Link
-            to={`/dashboard/documents/${doc.id}`}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 rounded-xl transition-all"
-          >
-            Details <ArrowUpRight size={14} />
-          </Link>
+          {doc.status !== 'deleted' && (
+            <Link
+              to={`/dashboard/documents/${doc.id}`}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 rounded-xl transition-all"
+            >
+              Details <ArrowUpRight size={14} />
+            </Link>
+          )}
           {isEditable && (
             <Link
               to={`/dashboard/documents/${doc.id}/editor`}
@@ -100,6 +103,15 @@ export function DocumentCard({ doc, onDelete }) {
               title="Delete document"
             >
               <Trash2 size={16} />
+            </button>
+          )}
+          {isRestorable && (
+            <button
+              onClick={() => onRestore?.(doc)}
+              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+              title="Restore document"
+            >
+              <RotateCcw size={16} />
             </button>
           )}
         </div>

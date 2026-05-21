@@ -55,7 +55,7 @@ function CompanyForm({ company, onSuccess, onClose }) {
   return (
  <form onSubmit={handleSubmit(save)} className="space-y-4">
  {/* Tab bar */}
- <div className="flex gap-1 border-b border-gray-200 -mx-6 px-6 mb-4">
+  <div className="flex gap-1 border-b border-gray-200 -mx-6 px-6 mb-4 overflow-x-auto flex-nowrap">
  {TABS.map(t => (
  <button key={t} type="button" onClick={() => setTab(t)}
  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -68,27 +68,27 @@ function CompanyForm({ company, onSuccess, onClose }) {
  {tab === 'Info' && (
  <div className="space-y-4">
  <Input label="Company Name *" {...register('name', { required: true })} />
- <div className="grid grid-cols-2 gap-4">
- <Input label="Registration Number" {...register('registration_number')} />
- <Input label="PAN Number" {...register('pan_number')} />
- <Input label="Industry" placeholder="Technology" {...register('industry')} />
- <Input label="Established Date" type="date" {...register('established_date')} />
- </div>
- </div>
- )}
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <Input label="Registration Number" {...register('registration_number')} />
+  <Input label="PAN Number" {...register('pan_number')} />
+  <Input label="Industry" placeholder="Technology" {...register('industry')} />
+  <Input label="Established Date" type="date" {...register('established_date')} />
+  </div>
+  </div>
+  )}
 
- {tab === 'Contact' && (
- <div className="space-y-4">
- <Input label="Phone" placeholder="+977-1-..." {...register('phone')} />
- <Input label="Email" type="email" {...register('email')} />
- <Input label="Website" placeholder="https://..." {...register('website')} />
- </div>
- )}
+  {tab === 'Contact' && (
+  <div className="space-y-4">
+  <Input label="Phone" placeholder="+977-1-..." {...register('phone')} />
+  <Input label="Email" type="email" {...register('email')} />
+  <Input label="Website" placeholder="https://..." {...register('website')} />
+  </div>
+  )}
 
- {tab === 'Address' && (
- <div className="space-y-4">
- <Input label="Street Address" {...register('street_address')} />
- <div className="grid grid-cols-2 gap-4">
+  {tab === 'Address' && (
+  <div className="space-y-4">
+  <Input label="Street Address" {...register('street_address')} />
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <Input label="City" {...register('city')} />
  <Input label="District" {...register('district')} />
  <Input label="Province" {...register('province')} />
@@ -175,7 +175,7 @@ export default function CompaniesPage() {
  };
 
  return (
- <div className="p-10 max-w-7xl mx-auto space-y-10 animate-fade-in">
+ <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 animate-fade-in">
  <PageHeader
  title="Business Profiles"
  description="Manage your business profiles, branding assets, and corporate signature settings."

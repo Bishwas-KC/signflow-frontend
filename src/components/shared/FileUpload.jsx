@@ -32,13 +32,17 @@ export function FileUpload({
  if (file) validateAndSetFile(file);
  };
 
- const validateAndSetFile = (file) => {
- if (maxSize && file.size > maxSize) {
- alert(`File is too large. Max size is ${formatFileSize(maxSize)}`);
- return;
- }
- onChange(file);
- };
+  const validateAndSetFile = (file) => {
+    if (maxSize && file.size > maxSize) {
+      alert(`File is too large. Max size is ${formatFileSize(maxSize)}`);
+      return;
+    }
+    if (accept && !file.name.toLowerCase().endsWith('.pdf')) {
+      alert('Only PDF files are allowed.');
+      return;
+    }
+    onChange(file);
+  };
 
  const handleFileChange = (e) => {
  const file = e.target.files?.[0];

@@ -24,7 +24,4 @@ export const formatDateTime = (iso) => {
 export const getInitials = (name = '') =>
  name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
 
-export const truncate = (str, n = 40) =>
- str?.length > n ? str.slice(0, n) + '…' : str;
-
 export const classNames = (...classes) => classes.filter(Boolean).join(' ');

@@ -7,7 +7,6 @@ import { authApi } from '@/api/auth.api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { CheckCircle, Lock, FileText } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 const schema = z.object({
  name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -87,7 +86,7 @@ export default function RegisterPage() {
  }, [step, navigate]);
 
  return (
- <div className="space-y-6">
+  <div className="space-y-4">
  <div>
  <h1 className="text-2xl font-bold text-gray-900">
  {step === 'form' ? 'Create Account' : 'Check Your Email'}
@@ -113,8 +112,8 @@ export default function RegisterPage() {
  </div>
  )}
 
- {step === 'form' && (
- <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+  {step === 'form' && (
+  <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
  <Input
  label="Full Name"
  placeholder="John Doe"

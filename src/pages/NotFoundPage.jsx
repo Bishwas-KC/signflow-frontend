@@ -5,7 +5,7 @@ import { FileQuestion } from 'lucide-react';
 export default function NotFoundPage() {
  return (
  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
- <div className="text-center max-w-sm">
+  <div className="text-center max-w-sm w-full">
  <div className="w-20 h-20 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
  <FileQuestion size={36} className="text-indigo-500" />
  </div>

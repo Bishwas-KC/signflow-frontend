@@ -22,7 +22,7 @@ export function DocumentPreview({ doc }) {
       {doc.file?.preview_url ? (
         <iframe
           src={doc.file.preview_url}
-          className="w-full h-[550px] xl:h-[650px] bg-gray-50"
+          className="w-full h-[350px] sm:h-[450px] md:h-[550px] xl:h-[650px] bg-gray-50"
           title="Document Preview"
         />
       ) : (

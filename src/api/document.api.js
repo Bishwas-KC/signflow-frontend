@@ -28,16 +28,22 @@ export const documentApi = {
  update: (id, data) =>
  api.put(`/documents/${id}`, data).then(r => r.data),
 
- delete: (id) =>
- api.delete(`/documents/${id}`).then(r => r.data),
+  delete: (id) =>
+  api.delete(`/documents/${id}`).then(r => r.data),
 
- deleteOriginalFile: (id) =>
- api.delete(`/documents/${id}/original-file`).then(r => r.data),
+  restore: (id) =>
+  api.post(`/documents/${id}/restore`).then(r => r.data),
 
- stats: () =>
- api.get('/documents/stats').then(r => r.data),
+  deleteOriginalFile: (id) =>
+  api.delete(`/documents/${id}/original-file`).then(r => r.data),
 
- validate: (id) =>
+  stats: () =>
+  api.get('/documents/stats').then(r => r.data),
+
+  dailyActivity: () =>
+  api.get('/documents/activity-count').then(r => r.data),
+
+  validate: (id) =>
  api.get(`/documents/${id}/validate`).then(r => r.data),
 
  send: (id, data = {}) =>
@@ -62,6 +68,9 @@ export const documentApi = {
 
   rejectDelete: (id) =>
   api.post(`/documents/${id}/reject-delete`).then(r => r.data),
+
+  cancelDelete: (id) =>
+  api.post(`/documents/${id}/cancel-delete`).then(r => r.data),
 
  // ── Signers ────────────────────────────────────────────────────────────
  addSigner: (id, data) =>

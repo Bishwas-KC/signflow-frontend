@@ -62,7 +62,7 @@ export default function EmailVerificationPage() {
 
  return (
  <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6">
- <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-10 max-w-md w-full text-center">
+  <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-10 max-w-md w-full text-center">
  {status === 'loading' && (
  <>
  <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6">

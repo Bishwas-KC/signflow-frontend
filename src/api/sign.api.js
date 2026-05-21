@@ -28,15 +28,27 @@ export const signApi = {
  decline: (token, reason = '') =>
  api.post(`/sign/${token}/decline`, { reason }).then(r => r.data),
 
- // Retrieve the authenticated user's saved signature.
- getSavedSignature: () =>
- api.get('/auth/signature').then(r => r.data),
+  // Retrieve all saved signatures for the authenticated user.
+  getSavedSignatures: () =>
+  api.get('/auth/signatures').then(r => r.data),
 
- // Save a new signature to the user's account.
- saveSignature: (signatureData) =>
- api.put('/auth/signature', { signature_data: signatureData }).then(r => r.data),
+  // Save a new signature to the user's account.
+  saveNewSignature: (signatureData, label) =>
+  api.post('/auth/signatures', { signature_data: signatureData, label }).then(r => r.data),
 
- // Clear the user's saved signature.
- clearSavedSignature: () =>
- api.put('/auth/signature', { signature_data: null }).then(r => r.data),
+  // Delete a saved signature.
+  deleteSignature: (id) =>
+  api.delete(`/auth/signatures/${id}`).then(r => r.data),
+
+  // Legacy: Retrieve the authenticated user's saved signature (single).
+  getSavedSignature: () =>
+  api.get('/auth/signature').then(r => r.data),
+
+  // Legacy: Save a signature to the user's account.
+  saveSignature: (signatureData) =>
+  api.put('/auth/signature', { signature_data: signatureData }).then(r => r.data),
+
+  // Legacy: Clear the user's saved signature.
+  clearSavedSignature: () =>
+  api.put('/auth/signature', { signature_data: null }).then(r => r.data),
 };

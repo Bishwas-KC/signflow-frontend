@@ -9,21 +9,6 @@ export function Skeleton({ className = '', ...props }) {
  );
 }
 
-export function DocumentRowSkeleton() {
- return (
- <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-50">
- <Skeleton className="w-9 h-9 rounded-lg flex-shrink-0" />
- <div className="flex-1 space-y-2">
- <Skeleton className="h-3.5 w-48 rounded" />
- <Skeleton className="h-3 w-28 rounded" />
- </div>
- <Skeleton className="h-5 w-20 rounded-full" />
- <Skeleton className="h-3 w-16 rounded hidden lg:block" />
- <Skeleton className="h-7 w-16 rounded-lg" />
- </div>
- );
-}
-
 export function StatCardSkeleton() {
  return (
  <div className="bg-white rounded-xl border border-gray-200 p-5 flex items-center gap-4">

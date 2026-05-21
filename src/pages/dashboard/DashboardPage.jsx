@@ -1,85 +1,29 @@
-import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { documentApi } from '@/api/document.api';
 import { useAuth } from '@/hooks/useAuth';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { StatCardSkeleton } from '@/components/ui/Skeleton';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { STATUS_COLORS, STATUS_LABELS } from '@/utils/constants';
 import { formatDate, classNames } from '@/utils/helpers';
 import {
-  FileText, FilePlus, CheckCircle, Clock, Send,
-  Pen, Users, ArrowRight, TrendingUp, AlertTriangle, Bell,
+  FileText, FilePlus, CheckCircle,
+  Pen, ArrowRight, TrendingUp, AlertTriangle, Bell,
 } from 'lucide-react';
-
-// ── Animated Counter ──────────────────────────────────────
-
-function AnimatedCounter({ value, duration = 1200 }) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    setCount(0);
-    const start = performance.now();
-    let rafId;
-    const frame = (now) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setCount(Math.round(eased * value));
-      if (t < 1) rafId = requestAnimationFrame(frame);
-    };
-    rafId = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(rafId);
-  }, [value, duration]);
-
-  return <span>{count.toLocaleString()}</span>;
-}
-
-// ── Stat Card ─────────────────────────────────────────────
-
-const CARD_STYLES = {
-  total:       { gradient: 'from-indigo-500 to-indigo-600', shadow: 'shadow-indigo-500/15', icon: FileText, label: 'Total Documents' },
-  in_progress: { gradient: 'from-amber-500 to-orange-600', shadow: 'shadow-amber-500/15', icon: Clock, label: 'In Progress' },
-  completed:   { gradient: 'from-emerald-500 to-teal-600', shadow: 'shadow-emerald-500/15', icon: CheckCircle, label: 'Completed' },
-  draft:       { gradient: 'from-slate-500 to-slate-600', shadow: 'shadow-slate-500/15', icon: Send, label: 'Drafts' },
-};
-
-function StatCard({ type, value, loading, delay }) {
-  const style = CARD_STYLES[type];
-  const Icon = style.icon;
-
-  if (loading) return <StatCardSkeleton />;
-
-  return (
-    <div
-      className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all duration-300 cursor-default relative"
-      style={{ animation: `fadeIn 0.4s ease-out ${delay}ms both` }}
-    >
-      <div className={`absolute top-0 left-6 right-6 h-1 rounded-full bg-gradient-to-r ${style.gradient} opacity-60`} />
-      <div className="flex items-center justify-between mb-4">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${style.gradient} flex items-center justify-center shadow-lg ${style.shadow}`}>
-          <Icon size={18} className="text-white" />
-        </div>
-      </div>
-      <p className="text-2xl font-black text-gray-900 tracking-tight mb-1">
-        <AnimatedCounter value={value ?? 0} />
-      </p>
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{style.label}</p>
-    </div>
-  );
-}
 
 // ── Donut Chart ──────────────────────────────────────────
 
 const DONUT_CONFIG = {
-  completed:   { label: 'Completed', color: '#10b981' },
-  in_progress: { label: 'In Progress', color: '#f59e0b' },
-  draft:       { label: 'Draft',       color: '#64748b' },
-  cancelled:   { label: 'Cancelled',   color: '#ef4444' },
+  draft:       { label: 'Draft',        color: '#64748b' },
+  pending:     { label: 'Ready to Send', color: '#3b82f6' },
+  in_progress: { label: 'In Progress',  color: '#f59e0b' },
+  completed:   { label: 'Completed',    color: '#10b981' },
+  cancelled:   { label: 'Cancelled',    color: '#ef4444' },
+  expired:     { label: 'Expired',      color: '#f97316' },
 };
 
-function StatusDonut({ stats }) {
+function StatusDonut({ stats, statsLoading }) {
   const data = Object.entries(DONUT_CONFIG)
     .filter(([key]) => (stats[key] ?? 0) > 0)
     .map(([key, cfg]) => ({ name: cfg.label, value: stats[key] ?? 0, color: cfg.color }));
@@ -92,10 +36,10 @@ function StatusDonut({ stats }) {
 
   return (
     <div className="flex items-center gap-6">
-      <div className="w-28 h-28 flex-shrink-0">
+      <div className="w-36 h-36 flex-shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} cx="50%" cy="50%" innerRadius={28} outerRadius={42} paddingAngle={2} dataKey="value" stroke="none">
+            <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value" stroke="none">
               {data.map((entry, idx) => <Cell key={idx} fill={entry.color} />)}
             </Pie>
             <Tooltip
@@ -105,40 +49,24 @@ function StatusDonut({ stats }) {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="space-y-1.5">
-        {data.map(entry => (
-          <div key={entry.name} className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-            <span className="text-xs font-medium text-gray-500">{entry.name}</span>
-            <span className="text-xs font-bold text-gray-800 ml-auto">{entry.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Quick Context ─────────────────────────────────────────
-
-function QuickContext({ needsSignature, awaitingOthers }) {
-  const items = [
-    { icon: Pen, label: 'Your signature needed', value: needsSignature, bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', iconColor: 'text-emerald-500' },
-    { icon: Users, label: 'Awaiting others', value: awaitingOthers, bg: 'bg-amber-50 text-amber-700 border-amber-200', iconColor: 'text-amber-500' },
-  ].filter(i => i.value > 0);
-
-  if (items.length === 0) {
-    return <p className="text-sm text-gray-400 font-medium">No pending items. You're all caught up!</p>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-3">
-      {items.map(item => (
-        <div key={item.label} className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${item.bg}`}>
-          <item.icon size={14} className={item.iconColor} />
-          <span className="text-xs font-bold">{item.label}</span>
-          <span className="text-sm font-black">{item.value}</span>
+      <div className="flex-1">
+        <div className="space-y-2">
+          {data.map(entry => (
+            <div key={entry.name} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: entry.color }} />
+              <span className="text-xs font-medium text-gray-500 flex-1">{entry.name}</span>
+              <span className="text-xs font-bold text-gray-800 w-6 text-right">{entry.value}</span>
+            </div>
+          ))}
         </div>
-      ))}
+        <div className="border-t border-gray-100 mt-3 pt-3">
+          <div className="flex items-center gap-2">
+            <div className="w-3 flex-shrink-0" />
+            <span className="text-xs font-semibold text-gray-900 flex-1">Total</span>
+            <span className="text-xs font-bold text-gray-900 w-6 text-right">{statsLoading ? '—' : total.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -240,6 +168,63 @@ function ActionCenter({ docs }) {
   );
 }
 
+// ── Daily Activity Chart ────────────────────────────────
+
+function DailyActivityChart({ activity, loading }) {
+  if (loading) {
+    return <div className="h-48 bg-gray-50 rounded-xl animate-pulse" />;
+  }
+
+  if (!activity || activity.length === 0) {
+    return (
+      <div className="h-48 flex items-center justify-center text-gray-400 text-sm font-medium">
+        No activity data yet
+      </div>
+    );
+  }
+
+  const formatAxisDate = (dateStr) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div className="h-48">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={activity} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis
+            dataKey="date"
+            tickFormatter={formatAxisDate}
+            tick={{ fontSize: 10, fill: '#94a3b8' }}
+            tickLine={false}
+            axisLine={{ stroke: '#e2e8f0' }}
+            interval={4}
+          />
+          <YAxis
+            allowDecimals={false}
+            tick={{ fontSize: 10, fill: '#94a3b8' }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <Tooltip
+            contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px' }}
+            labelFormatter={(dateStr) => new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: '11px', fontWeight: 600, paddingTop: '4px' }}
+            iconType="circle"
+            iconSize={8}
+          />
+          <Bar dataKey="sent" name="Sent" fill="#3b82f6" radius={[2, 2, 0, 0]} maxBarSize={10} />
+          <Bar dataKey="signed" name="Signed" fill="#f59e0b" radius={[2, 2, 0, 0]} maxBarSize={10} />
+          <Bar dataKey="completed" name="Completed" fill="#10b981" radius={[2, 2, 0, 0]} maxBarSize={10} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 // ── Main Dashboard ──────────────────────────────────────
 
 export default function DashboardPage() {
@@ -256,11 +241,14 @@ export default function DashboardPage() {
     queryFn: () => documentApi.list({ per_page: 10, sort_by: 'created_at', sort_dir: 'desc' }),
   });
 
+  const { data: activityRes, isLoading: activityLoading } = useQuery({
+    queryKey: ['daily-activity'],
+    queryFn: documentApi.dailyActivity,
+  });
+
   const stats = statsRes?.data?.stats || {};
   const docs = docsRes?.data || [];
-
-  const needsSignature = docs.filter(d => d.can_sign_now).length;
-  const awaitingOthers = (stats.in_progress ?? 0) - needsSignature;
+  const activity = activityRes?.data?.activity ?? [];
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -280,13 +268,6 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {/* ── Stats Grid ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {['total', 'in_progress', 'completed', 'draft'].map((type, i) => (
-          <StatCard key={type} type={type} value={stats[type]} loading={statsLoading} delay={i * 80} />
-        ))}
-      </div>
-
       {/* ── Charts + Context Row ───────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
@@ -296,23 +277,17 @@ export default function DashboardPage() {
             </div>
             <h3 className="text-sm font-bold text-gray-900">Status Overview</h3>
           </div>
-          <StatusDonut stats={stats} />
+          <StatusDonut stats={stats} statsLoading={statsLoading} />
         </div>
 
         <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
-              <Bell size={15} className="text-amber-500" />
+            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
+              <TrendingUp size={15} className="text-indigo-500" />
             </div>
-            <h3 className="text-sm font-bold text-gray-900">Quick Overview</h3>
+            <h3 className="text-sm font-bold text-gray-900">Activity (Last 30 Days)</h3>
           </div>
-          {statsLoading ? (
-            <div className="space-y-3">
-              {[1, 2].map(i => <div key={i} className="h-10 bg-gray-100 rounded-xl animate-pulse" />)}
-            </div>
-          ) : (
-            <QuickContext needsSignature={needsSignature} awaitingOthers={awaitingOthers} />
-          )}
+          <DailyActivityChart activity={activity} loading={activityLoading} />
         </div>
       </div>
 
