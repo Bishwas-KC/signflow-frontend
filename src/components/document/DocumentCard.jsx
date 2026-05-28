@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FileText, Eye, Edit3, Trash2, Calendar, Users, ArrowUpRight, RotateCcw } from 'lucide-react';
+import { FileText, Edit3, Trash2, Calendar, Users, ArrowUpRight, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { STATUS_COLORS, STATUS_LABELS } from '@/utils/constants';
 import { formatDate } from '@/utils/helpers';
@@ -51,7 +51,7 @@ export function DocumentCard({ doc, onDelete, onRestore }) {
         </div>
 
         {/* Metadata row */}
-        <div className="flex items-center gap-4 text-[11px] text-gray-400 font-medium mb-4 mt-auto">
+        <div className="flex items-center gap-4 flex-wrap text-[11px] text-gray-400 font-medium mb-4 mt-auto">
           <span className="inline-flex items-center gap-1.5">
             <Calendar size={12} />
             {formatDate(doc.created_at)}
@@ -78,19 +78,17 @@ export function DocumentCard({ doc, onDelete, onRestore }) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-          {doc.status !== 'deleted' && (
+        <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-gray-100">
             <Link
               to={`/dashboard/documents/${doc.id}`}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 rounded-xl transition-all"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 sm:py-2 text-xs font-bold text-gray-500 hover:text-indigo-600 bg-gray-50 hover:bg-indigo-50 rounded-xl transition-all min-h-[44px] sm:min-h-0"
             >
               Details <ArrowUpRight size={14} />
             </Link>
-          )}
           {isEditable && (
             <Link
               to={`/dashboard/documents/${doc.id}/editor`}
-              className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+              className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
               title="Edit fields"
             >
               <Edit3 size={16} />
@@ -99,7 +97,7 @@ export function DocumentCard({ doc, onDelete, onRestore }) {
           {isDeletable && (
             <button
               onClick={() => onDelete(doc)}
-              className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+              className="p-3 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
               title="Delete document"
             >
               <Trash2 size={16} />
@@ -108,7 +106,7 @@ export function DocumentCard({ doc, onDelete, onRestore }) {
           {isRestorable && (
             <button
               onClick={() => onRestore?.(doc)}
-              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+              className="p-3 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
               title="Restore document"
             >
               <RotateCcw size={16} />

@@ -20,18 +20,19 @@ const DONUT_CONFIG = {
   in_progress: { label: 'In Progress',  color: '#f59e0b' },
   completed:   { label: 'Completed',    color: '#10b981' },
   cancelled:   { label: 'Cancelled',    color: '#ef4444' },
+  declined:    { label: 'Declined',     color: '#ec4899' },
   expired:     { label: 'Expired',      color: '#f97316' },
 };
 
 function StatusDonut({ stats, statsLoading }) {
   const data = Object.entries(DONUT_CONFIG)
     .filter(([key]) => (stats[key] ?? 0) > 0)
-    .map(([key, cfg]) => ({ name: cfg.label, value: stats[key] ?? 0, color: cfg.color }));
+    .map(([key, cfg]) => ({ name: cfg.label, value: stats[key] ?? 0, color: cfg.color, statusKey: key }));
 
   const total = data.reduce((s, d) => s + d.value, 0);
 
   if (total === 0) {
-    return <div className="flex items-center justify-center h-28 text-gray-400 text-sm font-medium">No data yet</div>;
+    return <div className="flex items-center justify-center h-28 text-gray-400 text-sm font-medium">No data found</div>;
   }
 
   return (
@@ -40,7 +41,7 @@ function StatusDonut({ stats, statsLoading }) {
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value" stroke="none">
-              {data.map((entry, idx) => <Cell key={idx} fill={entry.color} />)}
+              {data.map(entry => <Cell key={entry.statusKey} fill={entry.color} />)}
             </Pie>
             <Tooltip
               contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 600 }}
@@ -83,7 +84,7 @@ function ActionCard({ doc }) {
           <Pen size={13} className="text-emerald-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Ready for your signature</p>
+          <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Ready for your signature</p>
           <p className="text-sm font-bold text-gray-900 truncate">{doc.title}</p>
         </div>
         <Button size="sm" className="rounded-lg bg-emerald-600 hover:bg-emerald-700 border-none text-white flex-shrink-0" onClick={e => { e.preventDefault(); navigate(`/sign/${doc.my_signing_token}/sign`); }}>
@@ -93,14 +94,14 @@ function ActionCard({ doc }) {
     );
   }
 
-  if (doc.cancellation_request || doc.deletion_request) {
+  if (doc.cancellation_request) {
     return (
       <Link to={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-amber-200 bg-amber-50 hover:shadow-md transition-all group">
         <div className="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
           <AlertTriangle size={13} className="text-amber-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Pending approval</p>
+          <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Pending approval</p>
           <p className="text-sm font-bold text-gray-900 truncate">{doc.title}</p>
         </div>
         <Button size="sm" variant="secondary" className="rounded-lg flex-shrink-0" onClick={e => { e.preventDefault(); navigate(`/dashboard/documents/${doc.id}`); }}>
@@ -117,7 +118,7 @@ function ActionCard({ doc }) {
           <CheckCircle size={13} className="text-blue-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Recently completed</p>
+          <p className="text-xs font-bold text-blue-600 uppercase tracking-wider">Recently completed</p>
           <p className="text-sm font-bold text-gray-900 truncate">{doc.title}</p>
         </div>
       </Link>
@@ -133,8 +134,8 @@ function ActionCenter({ docs }) {
   const sections = [];
 
   const needsSignDocs = docs.filter(d => d.can_sign_now);
-  const pendingDocs = docs.filter(d => !d.can_sign_now && (d.cancellation_request || d.deletion_request));
-  const completedDocs = docs.filter(d => !d.can_sign_now && !(d.cancellation_request || d.deletion_request) && d.status === 'completed');
+  const pendingDocs = docs.filter(d => !d.can_sign_now && d.cancellation_request);
+  const completedDocs = docs.filter(d => !d.can_sign_now && !d.cancellation_request && d.status === 'completed');
 
   const LABEL_COLORS = { emerald: 'text-emerald-600', amber: 'text-amber-600', blue: 'text-blue-600' };
 
@@ -155,7 +156,7 @@ function ActionCenter({ docs }) {
       <div className="space-y-4">
         {sections.map(section => (
           <div key={section.label}>
-            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${LABEL_COLORS[section.color]}`}>
+            <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${LABEL_COLORS[section.color]}`}>
               {section.label}
             </p>
             {section.docs.slice(0, 3).map(doc => (
@@ -178,7 +179,7 @@ function DailyActivityChart({ activity, loading }) {
   if (!activity || activity.length === 0) {
     return (
       <div className="h-48 flex items-center justify-center text-gray-400 text-sm font-medium">
-        No activity data yet
+        No activity data found
       </div>
     );
   }
@@ -254,7 +255,7 @@ export default function DashboardPage() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8 animate-fade-in">
+    <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-8 animate-fade-in">
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
@@ -263,7 +264,7 @@ export default function DashboardPage() {
           </h1>
           <p className="text-sm text-gray-500 mt-1">Here's your document overview for today.</p>
         </div>
-        <Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20 px-8" onClick={() => navigate('/dashboard/documents', { state: { openNewModal: true } })}>
+          <Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20 flex-shrink-0" onClick={() => navigate('/dashboard/documents', { state: { openNewModal: true } })}>
           <FilePlus size={18} />New Document
         </Button>
       </div>
@@ -285,7 +286,7 @@ export default function DashboardPage() {
             <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
               <TrendingUp size={15} className="text-indigo-500" />
             </div>
-            <h3 className="text-sm font-bold text-gray-900">Activity (Last 30 Days)</h3>
+            <h3 className="text-sm font-bold text-gray-900">Activity (Last 15 Days)</h3>
           </div>
           <DailyActivityChart activity={activity} loading={activityLoading} />
         </div>
@@ -295,7 +296,7 @@ export default function DashboardPage() {
 
       {/* ── Recent Documents ───────────────────────────── */}
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-5 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
               <FileText size={15} className="text-indigo-500" />
@@ -310,13 +311,13 @@ export default function DashboardPage() {
         {docsLoading ? (
           <div className="divide-y divide-gray-50">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-6 py-4">
-                <div className="w-10 h-10 bg-gray-100 rounded-xl animate-pulse" />
-                <div className="flex-1 space-y-1.5">
-                  <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
-                  <div className="h-2 bg-gray-50 rounded animate-pulse w-1/4" />
+                <div key={i} className="flex items-center gap-4 px-4 sm:px-6 py-4">
+                  <div className="w-10 h-10 bg-gray-100 rounded-xl animate-pulse" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                    <div className="h-2 bg-gray-50 rounded animate-pulse w-1/4" />
+                  </div>
                 </div>
-              </div>
             ))}
           </div>
         ) : docs.length === 0 ? (
@@ -324,10 +325,10 @@ export default function DashboardPage() {
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
               <FileText size={32} className="text-gray-200" />
             </div>
-            <p className="text-gray-900 font-bold text-lg tracking-tight">No documents yet</p>
+            <p className="text-gray-900 font-bold text-lg tracking-tight">No documents found</p>
             <p className="text-gray-500 text-sm mt-1 mb-8 max-w-xs mx-auto font-medium">Upload your first document to start the automated signing process.</p>
             <Link to="/dashboard/documents">
-              <Button variant="subtle" className="rounded-xl px-8"><FilePlus size={16} />Upload Document</Button>
+              <Button variant="subtle" className="rounded-xl px-8"><FilePlus size={16} />New Document</Button>
             </Link>
           </div>
         ) : (
@@ -336,7 +337,7 @@ export default function DashboardPage() {
               <Link
                 key={doc.id}
                 to={`/dashboard/documents/${doc.id}`}
-                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/50 transition-all group"
+                className="flex items-center gap-4 px-4 sm:px-6 py-4 hover:bg-gray-50/50 transition-all group"
               >
                 <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform text-indigo-500">
                   <FileText size={18} />
@@ -344,11 +345,11 @@ export default function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">{doc.title}</p>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[10px] font-semibold text-gray-400">{formatDate(doc.created_at)}</span>
+                    <span className="text-xs font-semibold text-gray-400">{formatDate(doc.created_at)}</span>
                     {doc.counts?.total_signers > 0 && (
                       <>
                         <span className="text-gray-200">·</span>
-                        <span className="text-[10px] font-semibold text-gray-400">
+                        <span className="text-xs font-semibold text-gray-400">
                           {doc.counts.signed_count}/{doc.counts.total_signers} signed
                         </span>
                       </>

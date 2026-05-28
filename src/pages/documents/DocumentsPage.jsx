@@ -13,7 +13,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { FileUpload } from '@/components/shared/FileUpload';
 import { DocumentCard } from '@/components/document/DocumentCard';
 import { STATUS_COLORS, STATUS_LABELS } from '@/utils/constants';
-import { formatDate, formatFileSize } from '@/utils/helpers';
+import { formatDate } from '@/utils/helpers';
 import {
   FilePlus, FileText, Trash2, Eye, Edit3, Search,
   LayoutGrid, List, RotateCcw,
@@ -29,6 +29,7 @@ const STATUS_CONFIG = {
   in_progress: { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50' },
   completed: { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
   cancelled: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
+  declined: { icon: XCircle, color: 'text-pink-500', bg: 'bg-pink-50' },
   expired: { icon: XCircle, color: 'text-orange-500', bg: 'bg-orange-50' },
   deleted: { icon: Trash2, color: 'text-gray-500', bg: 'bg-gray-100' },
 };
@@ -90,7 +91,7 @@ function NewDocumentModal({ open, onClose }) {
     mutationFn: ({ data, file }) => documentApi.create(data, file),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
-      toast.success('Document uploaded! Now add signers and place fields.');
+      toast.success('Document uploaded. Now add signers and place fields.');
       onClose();
       reset();
       navigate(`/dashboard/documents/${res.data.document.id}/editor`);
@@ -127,7 +128,7 @@ function NewDocumentModal({ open, onClose }) {
 
   return (
     <>
-      <Modal open={open} onClose={handleClose} title="Upload New Document" size="lg">
+      <Modal open={open} onClose={handleClose} title="New Document" size="lg">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <Controller
             name="file"
@@ -137,16 +138,16 @@ function NewDocumentModal({ open, onClose }) {
             )}
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Document Title *" placeholder="e.g. Partnership Agreement"
               error={errors.title?.message} {...register('title', { required: 'Title is required' })} />
             <Input label="Description (optional)" placeholder="Brief description..." {...register('description')} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="block text-sm font-bold text-gray-700">Signing Mode *</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {[
                   { value: 'sequential', label: 'Sequential', desc: 'In order' },
                   { value: 'bulk', label: 'Bulk', desc: 'Any order' },
@@ -166,7 +167,7 @@ function NewDocumentModal({ open, onClose }) {
               <Select label="Company (optional)" {...register('company_id')}>
                 <option value="">No company</option>
                 {companies.data.map(c => (
-                  <option key={c.id} value={c.id}>{c.info.name}</option>
+                  <option key={c.id} value={c.id}>{c.info?.name || c.name || 'Unnamed Company'}</option>
                 ))}
               </Select>
             )}
@@ -210,7 +211,7 @@ function Pagination({ meta, page, onPageChange, perPage, onPerPageChange }) {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-6 py-4 bg-white rounded-2xl border border-gray-200/70 shadow-sm">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 sm:px-6 py-4 bg-white rounded-2xl border border-gray-200/70 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-400">Show</span>
@@ -357,22 +358,6 @@ export default function DocumentsPage() {
     },
   });
 
-  const requestDeleteMut = useMutation({
-    mutationFn: (id) => documentApi.requestDelete(id),
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['documents'] });
-      if (!res?.data?.request_id) {
-        toast.success('Document deleted.');
-      } else {
-        toast.success('Deletion request submitted. Waiting for approvals.');
-      }
-      setDeleteDoc(null);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error?.message || 'Failed to request deletion.');
-    },
-  });
-
   const restoreMut = useMutation({
     mutationFn: (id) => documentApi.restore(id),
     onSuccess: () => {
@@ -388,16 +373,22 @@ export default function DocumentsPage() {
   const meta = data?.meta || {};
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-col sm:flex-row">
         <div>
           <h1 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Documents</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage and track your signature requests.</p>
+          {status !== 'deleted' ? (
+            <p className="text-sm text-gray-500 mt-1">Manage and track your signature requests.</p>
+          ) : (
+            <p className="text-sm text-gray-500 mt-1">View and restore your archived documents.</p>
+          )}
         </div>
+        {status !== 'deleted' && (
         <Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20 flex-shrink-0" onClick={() => setNewModal(true)}>
           <FilePlus size={18} /> New Document
         </Button>
+        )}
       </div>
 
       {/* Quick stats */}
@@ -433,31 +424,38 @@ export default function DocumentsPage() {
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder="Search documents..."
+            aria-label="Search documents"
             className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 text-gray-900 transition-all placeholder:text-gray-400"
           />
         </div>
-        <div className="flex gap-2">
-          <select
-            value={role}
-            onChange={e => { setRole(e.target.value); setPage(1); }}
-            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all appearance-none cursor-pointer"
-          >
-            <option value="all">All</option>
-            <option value="owner">My Documents</option>
-            <option value="signer">Signing Requests</option>
-          </select>
-          {status !== 'deleted' && (
-          <select
-            value={status}
-            onChange={e => { setStatus(e.target.value); setPage(1); }}
-            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all appearance-none cursor-pointer"
-          >
-            <option value="">All statuses</option>
-            {Object.entries(STATUS_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
-          </select>
-          )}
+          <div className="flex gap-2 flex-wrap">
+            <div className="flex-1 min-w-0">
+              {status !== 'deleted' && (
+              <select
+                value={role}
+                onChange={e => { setRole(e.target.value); setPage(1); }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all appearance-none cursor-pointer"
+              >
+                <option value="all">All</option>
+                <option value="owner">My Documents</option>
+                <option value="signer">Signing Requests</option>
+              </select>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              {status !== 'deleted' && (
+              <select
+                value={status}
+                onChange={e => { setStatus(e.target.value); setPage(1); }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 transition-all appearance-none cursor-pointer"
+              >
+                <option value="">All statuses</option>
+                {Object.entries(STATUS_LABELS).map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+              )}
+            </div>
           <div className="flex bg-white border border-gray-200 rounded-xl p-0.5 shadow-sm">
             <button
               onClick={() => setView('grid')}
@@ -481,7 +479,7 @@ export default function DocumentsPage() {
       {isLoading ? (
         <DocSkeleton view={view} />
       ) : docs.length === 0 ? (
-        <div className="py-20 bg-white rounded-2xl border border-dashed border-gray-200">
+        <div className="py-10 sm:py-20 bg-white rounded-2xl border border-dashed border-gray-200">
           <EmptyState
             icon={FileText}
             title="No documents found"
@@ -493,7 +491,7 @@ export default function DocumentsPage() {
             action={
               !search && !status && (
                 <Button variant="subtle" className="rounded-xl" onClick={() => setNewModal(true)}>
-                  <FilePlus size={16} />Create Document
+                  <FilePlus size={16} />New Document
                 </Button>
               )
             }
@@ -513,13 +511,13 @@ export default function DocumentsPage() {
                 <table className="w-full text-left">
                   <thead>
                     <tr className="border-b border-gray-100">
-                      <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-5 py-4">Document</th>
-                      <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden sm:table-cell">Mode</th>
-                      <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden sm:table-cell">Status</th>
-                      <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden md:table-cell">Progress</th>
-                      <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden lg:table-cell">Signers</th>
-                      <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden lg:table-cell">Created</th>
-                      <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-5 py-4 text-right">Actions</th>
+                      <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 sm:px-5 py-4">Document</th>
+                      <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden sm:table-cell">Mode</th>
+                      <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden sm:table-cell">Status</th>
+                      <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden md:table-cell">Progress</th>
+                      <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden lg:table-cell">Signers</th>
+                      <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden lg:table-cell">Created</th>
+                      <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-3 sm:px-5 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
@@ -528,7 +526,7 @@ export default function DocumentsPage() {
                       const Icon = cfg?.icon || FileText;
                       return (
                         <tr key={doc.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-5 py-4">
+                          <td className="px-3 sm:px-5 py-4">
                             <Link to={`/dashboard/documents/${doc.id}`} className="flex items-center gap-3 group/cell">
                               <div className="w-9 h-9 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0 group-hover/cell:scale-110 transition-transform text-indigo-500">
                                 <FileText size={18} />
@@ -539,15 +537,15 @@ export default function DocumentsPage() {
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {doc.role === 'signer' && (
-                                    <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 leading-none">Signer</span>
+                                    <span className="text-xs font-bold bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200/50 leading-none">Signer</span>
                                   )}
-                                  <span className="text-[11px] text-gray-400 font-medium">{doc.file?.size_formatted}</span>
+                                  <span className="text-xs text-gray-400 font-medium">{doc.file?.size_formatted}</span>
                                 </div>
                               </div>
                             </Link>
                           </td>
                           <td className="px-4 py-4 hidden sm:table-cell">
-                            <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-bold text-indigo-600 bg-indigo-50 rounded-md leading-none capitalize">
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-md leading-none capitalize">
                               {doc.signing_mode}
                             </span>
                           </td>
@@ -564,7 +562,7 @@ export default function DocumentsPage() {
                                   style={{ width: `${doc.progress ?? 0}%` }}
                                 />
                               </div>
-                              <span className="text-[11px] font-bold text-gray-400">{doc.progress ?? 0}%</span>
+                              <span className="text-xs font-bold text-gray-400">{doc.progress ?? 0}%</span>
                             </div>
                           </td>
                           <td className="px-4 py-4 hidden lg:table-cell">
@@ -575,21 +573,19 @@ export default function DocumentsPage() {
                           <td className="px-4 py-4 hidden lg:table-cell">
                             <span className="text-sm text-gray-400 font-medium">{formatDate(doc.created_at)}</span>
                           </td>
-                          <td className="px-5 py-4">
+                          <td className="px-3 sm:px-5 py-4">
                             <div className="flex items-center gap-1 justify-end">
-                              {doc.status !== 'deleted' && (
-                                <Link
-                                  to={`/dashboard/documents/${doc.id}`}
-                                  className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
-                                  title="View details"
-                                >
-                                  <Eye size={15} />
-                                </Link>
-                              )}
+                              <Link
+                                to={`/dashboard/documents/${doc.id}`}
+                                className="p-3 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
+                                title="View details"
+                              >
+                                <Eye size={15} />
+                              </Link>
                               {['draft', 'pending'].includes(doc.status) && (
                                 <Link
                                   to={`/dashboard/documents/${doc.id}/editor`}
-                                  className="p-1.5 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
+                                  className="p-3 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all"
                                   title="Edit fields"
                                 >
                                   <Edit3 size={15} />
@@ -598,7 +594,7 @@ export default function DocumentsPage() {
                               {doc.can_delete && (
                                 <button
                                   onClick={() => setDeleteDoc(doc)}
-                                  className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all"
+                                  className="p-3 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-all"
                                   title="Delete"
                                 >
                                   <Trash2 size={15} />
@@ -607,7 +603,7 @@ export default function DocumentsPage() {
                               {doc.can_restore && (
                                 <button
                                   onClick={() => restoreMut.mutate(doc.id)}
-                                  className="p-1.5 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-all"
+                                  className="p-3 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-all"
                                   title="Restore"
                                 >
                                   <RotateCcw size={15} />

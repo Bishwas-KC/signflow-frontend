@@ -1,16 +1,11 @@
-import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, ShieldCheck, LogOut, LayoutDashboard, X } from 'lucide-react';
-
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-}
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { CheckCircle, XCircle, ShieldCheck, LayoutDashboard, FileText, X } from 'lucide-react';
 
 export default function ThankYouPage() {
   const [searchParams] = useSearchParams();
-  const { token } = useParams();
   const navigate = useNavigate();
   const declined = searchParams.get('declined') === '1';
+  const docId = searchParams.get('doc_id');
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
@@ -58,12 +53,14 @@ export default function ThankYouPage() {
               <X size={16} /> Close
             </button>
           </div>
-          <button
-            onClick={() => { logout(); navigate('/login'); }}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all cursor-pointer font-inherit"
-          >
-            <LogOut size={14} /> Sign out
-          </button>
+          {docId && (
+            <button
+              onClick={() => navigate(`/dashboard/documents/${docId}`)}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all cursor-pointer font-inherit"
+            >
+              <FileText size={14} /> View Document
+            </button>
+          )}
         </div>
       </div>
     </div>

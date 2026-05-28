@@ -24,7 +24,7 @@ export function Modal({ open, onClose, title, children, size = 'md', className =
  <h2 className="text-xl font-bold text-gray-900 leading-none">{title}</h2>
  <button 
  onClick={onClose} 
- className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+  className="w-11 h-11 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
  >
  <X size={20} />
  </button>

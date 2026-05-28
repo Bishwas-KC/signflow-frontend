@@ -72,9 +72,11 @@ export default function RegisterPage() {
  if (step !== 'success') return;
  const timer = setTimeout(() => {
  const stored = localStorage.getItem('pending_sign_redirect');
- if (stored) {
- const { redirect, email } = JSON.parse(stored);
- const params = new URLSearchParams();
+  if (stored) {
+  let parsed = {};
+  try { parsed = JSON.parse(stored); } catch {}
+  const { redirect, email } = parsed;
+  const params = new URLSearchParams();
  if (redirect) params.set('redirect', redirect);
  if (email) params.set('email', email);
  navigate(`/login?${params.toString()}`, { replace: true });
@@ -130,7 +132,7 @@ export default function RegisterPage() {
  {...register('email')}
  />
  {lockedEmail && (
- <p className="flex items-center gap-1 text-[10px] font-medium text-indigo-500 mt-1">
+  <p className="flex items-center gap-1 text-xs font-medium text-indigo-500 mt-1">
  <Lock size={10} /> Locked from signing invitation
  </p>
  )}
@@ -180,7 +182,7 @@ export default function RegisterPage() {
  <p className="text-center text-sm text-gray-500 font-medium">
  Already have an account?{' '}
  <Link to={`/login${searchParams.toString() ? `?${searchParams.toString()}` : ''}`} className="text-indigo-600 font-bold hover:underline">
- Sign in
+  Sign In
  </Link>
  </p>
  )}

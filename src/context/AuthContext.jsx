@@ -16,14 +16,16 @@ export function AuthProvider({ children }) {
  const token = localStorage.getItem('token');
  if (!token) { setLoading(false); return; }
 
- authApi.me()
- .then(res => setUser(res.data.user))
- .catch(() => {
- localStorage.removeItem('token');
- localStorage.removeItem('user');
- setUser(null);
- })
- .finally(() => setLoading(false));
+  authApi.me()
+  .then(res => setUser(res.data.user))
+  .catch((error) => {
+  if (error?.response?.status === 401) {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  setUser(null);
+  }
+  })
+  .finally(() => setLoading(false));
  }, []);
 
  const saveSession = useCallback((userData, token) => {
@@ -35,14 +37,14 @@ export function AuthProvider({ children }) {
  const register = useCallback(async (data) => {
  const res = await authApi.register(data);
  saveSession(res.data.user, res.data.token);
- toast.success('Welcome to Signflow!');
+  toast.success('Welcome to Signflow.');
  return res;
  }, [saveSession]);
 
  const login = useCallback(async (data) => {
  const res = await authApi.login(data);
  saveSession(res.data.user, res.data.token);
- toast.success(`Welcome back, ${res.data.user.name}!`);
+  toast.success(`Welcome back, ${res.data.user.name}.`);
  return res;
  }, [saveSession]);
 
@@ -54,9 +56,13 @@ export function AuthProvider({ children }) {
  }, []);
 
  const loginWithGoogle = useCallback(async () => {
- const res = await authApi.googleRedirect();
- window.location.href = res.data.redirect_url;
- }, []);
+   try {
+     const res = await authApi.googleRedirect();
+     window.location.href = res.data.redirect_url;
+   } catch {
+     toast.error('Failed to initiate Google sign-in.');
+   }
+  }, []);
 
  return (
  <AuthContext.Provider value={{ user, loading, register, login, logout, loginWithGoogle, saveSession }}>

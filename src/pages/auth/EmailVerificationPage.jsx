@@ -6,8 +6,10 @@ import { CheckCircle, XCircle } from 'lucide-react';
 
 function goToLoginWithContext(navigate) {
  const stored = localStorage.getItem('pending_sign_redirect');
- if (stored) {
- const { redirect, email } = JSON.parse(stored);
+  if (stored) {
+  let parsed = {};
+  try { parsed = JSON.parse(stored); } catch {}
+  const { redirect, email } = parsed;
  localStorage.removeItem('pending_sign_redirect');
  const params = new URLSearchParams();
  if (redirect) params.set('redirect', redirect);
@@ -79,36 +81,36 @@ export default function EmailVerificationPage() {
  </div>
  <h2 className="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h2>
  <p className="text-gray-600 mb-6">{message}</p>
- <button
- onClick={() => goToLoginWithContext(navigate)}
- className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20"
- >
- Go to Login
- </button>
- </>
- )}
+  <button
+          onClick={() => goToLoginWithContext(navigate)}
+          className="w-full sm:w-auto px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20 min-h-[44px]"
+          >
+            Sign In
+          </button>
+  </>
+  )}
 
- {status === 'error' && (
- <>
- <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
- <XCircle size={36} className="text-red-500" />
- </div>
- <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Failed</h2>
- <p className="text-gray-600 mb-6">{message}</p>
- <div className="flex gap-3 justify-center">
- <button
- onClick={() => navigate('/login')}
- className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
- >
- Go to Login
- </button>
- <button
- onClick={() => navigate('/register')}
- className="px-6 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
- >
- Register
- </button>
- </div>
+  {status === 'error' && (
+  <>
+  <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+  <XCircle size={36} className="text-red-500" />
+  </div>
+  <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Failed</h2>
+  <p className="text-gray-600 mb-6">{message}</p>
+  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+  <button
+  onClick={() => navigate('/login')}
+  className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors min-h-[44px]"
+  >
+  Sign In
+  </button>
+  <button
+  onClick={() => navigate('/register')}
+  className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors min-h-[44px]"
+  >
+  Register
+  </button>
+  </div>
  </>
  )}
  </div>

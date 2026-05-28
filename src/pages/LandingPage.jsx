@@ -84,7 +84,7 @@ function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-lg shadow-sm border-b border-gray-100' : 'bg-transparent'}`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md lg:backdrop-blur-lg shadow-sm border-b border-gray-100' : 'bg-transparent'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link to="/" className="flex items-center gap-3">
@@ -102,13 +102,13 @@ function Navbar() {
           </div>
 
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/login" className="px-5 py-2.5 text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors">Sign In</Link>
-            <Link to="/register" className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 active:scale-[0.98]">
+            <Link to="/login" className="px-5 py-3 lg:py-2.5 text-sm font-semibold text-gray-700 hover:text-indigo-600 transition-colors">Sign In</Link>
+            <Link to="/register" className="inline-flex items-center gap-2 px-5 py-3 lg:py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-200 active:scale-[0.98]">
               Get Started <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-gray-600 hover:text-indigo-600">
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-3 text-gray-600 hover:text-indigo-600">
             {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -117,14 +117,14 @@ function Navbar() {
       {mobileOpen && (
         <div className="md:hidden bg-white border-t border-gray-100 shadow-xl animate-fade-in">
           <div className="px-4 py-4 space-y-3">
-            <a href="#features" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">Features</a>
-            <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">How It Works</a>
-            <a href="#security" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">Security</a>
-            <a href="#faq" onClick={() => setMobileOpen(false)} className="block px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">FAQ</a>
+            <a href="#features" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">Features</a>
+            <a href="#how-it-works" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">How It Works</a>
+            <a href="#security" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">Security</a>
+            <a href="#faq" onClick={() => setMobileOpen(false)} className="block px-4 py-3 text-sm font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">FAQ</a>
             <hr className="border-gray-100" />
             <div className="space-y-2 pt-1">
-              <Link to="/login" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-2.5 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">Sign In</Link>
-              <Link to="/register" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all">Get Started</Link>
+              <Link to="/login" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-3 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all">Sign In</Link>
+              <Link to="/register" onClick={() => setMobileOpen(false)} className="block w-full text-center px-4 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-all">Get Started</Link>
             </div>
           </div>
         </div>
@@ -137,9 +137,9 @@ function Hero() {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-500/20 rounded-full blur-[150px]" />
-        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-500/20 rounded-full blur-[150px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-400/5 rounded-full blur-[200px]" />
+        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-500/20 rounded-full blur-[80px] md:blur-[150px]" />
+        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-500/20 rounded-full blur-[80px] md:blur-[150px]" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-400/5 rounded-full blur-[100px] md:blur-[200px]" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20 lg:pt-32 lg:pb-28">
@@ -149,7 +149,7 @@ function Hero() {
             <span className="text-sm font-medium text-indigo-200">Trusted by 10,000+ professionals</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-[1.1] tracking-tight mb-6 reveal">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-white leading-tight tracking-tight mb-6 reveal">
             Digital Signatures{' '}
             <span className="bg-gradient-to-r from-indigo-300 to-purple-300 bg-clip-text text-transparent">Made Simple</span>
           </h1>
@@ -406,7 +406,7 @@ function Footer() {
             <h4 className="text-xs font-semibold tracking-widest uppercase text-slate-500 mb-4">Product</h4>
             <ul className="space-y-2.5">
               {['Features', 'Security', 'Integrations', 'Pricing'].map((item) => (
-                <li key={item}><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">{item}</a></li>
+                <li key={item}><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors inline-block py-2">{item}</a></li>
               ))}
             </ul>
           </div>
@@ -414,7 +414,7 @@ function Footer() {
             <h4 className="text-xs font-semibold tracking-widest uppercase text-slate-500 mb-4">Company</h4>
             <ul className="space-y-2.5">
               {['About', 'Blog', 'Careers', 'Contact'].map((item) => (
-                <li key={item}><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">{item}</a></li>
+                <li key={item}><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors inline-block py-2">{item}</a></li>
               ))}
             </ul>
           </div>
@@ -422,7 +422,7 @@ function Footer() {
             <h4 className="text-xs font-semibold tracking-widest uppercase text-slate-500 mb-4">Legal</h4>
             <ul className="space-y-2.5">
               {['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Compliance'].map((item) => (
-                <li key={item}><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors">{item}</a></li>
+                <li key={item}><a href="#" className="text-sm text-slate-400 hover:text-white transition-colors inline-block py-2">{item}</a></li>
               ))}
             </ul>
           </div>

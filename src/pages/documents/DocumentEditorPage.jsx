@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Draggable from 'react-draggable';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { documentApi } from '@/api/document.api';
@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
 import { Input } from '@/components/ui/Input';
-import { SIGNATURE_FIELD } from '@/utils/constants';
+import { SIGNATURE_FIELD, SCREEN_DPI, PDF_POINTS_INCH } from '@/utils/constants';
 import { getInitials, classNames } from '@/utils/helpers';
 import {
   ArrowLeft,
@@ -31,13 +31,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-pdfjs.GlobalWorkerOptions.workerSrc =
- `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
 const DEFAULT_PAGE_W = 794;
 const DEFAULT_PAGE_H = 1123;
-const SCREEN_DPI = 96;
-const PDF_POINTS_INCH = 72;
 
 const SIGNER_COLORS = [
  { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-600', border: 'border-indigo-300', ring: 'ring-indigo-200', light: 'bg-indigo-100' },
@@ -171,7 +166,7 @@ function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, sig
 
  if (wouldOverlap(newX, newY, field.id, allFields, w, h)) {
  setKey(k => k + 1);
- toast.error('Cannot place here — overlaps another signature field');
+  toast.error('Cannot place here — overlaps another signature field.');
  return;
  }
 
@@ -179,12 +174,13 @@ function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, sig
  };
 
  return (
- <Draggable
- nodeRef={nodeRef}
- defaultPosition={startPos}
- key={key}
- onStop={handleStop}
- >
+  <Draggable
+  nodeRef={nodeRef}
+  defaultPosition={startPos}
+  bounds={{ left: 0, top: 0, right: pageW - w, bottom: pageH - h }}
+  key={key}
+  onStop={handleStop}
+  >
  <div
  ref={nodeRef}
  className="absolute top-0 left-0 group cursor-grab active:cursor-grabbing select-none"
@@ -205,7 +201,7 @@ function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, sig
  </div>
  <button
  onMouseDown={e => { e.stopPropagation(); onRemove(field.id); }}
- className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center shadow-md z-30 hover:bg-red-600 transition-colors"
+  className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center shadow-md z-30 hover:bg-red-600 transition-colors"
  >
  <X size={10} strokeWidth={3} />
  </button>
@@ -253,12 +249,12 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
  return;
  }
  if (parsed.length === 0) {
- toast.error('Please enter at least one valid page number');
+    toast.error('Please enter at least one valid page number.');
  return;
  }
  pages = parsed;
  } else {
- toast.error('Please select an option');
+    toast.error('Please select an option.');
  return;
  }
 
@@ -303,7 +299,7 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
  toast.dismiss('removing');
  
  if (removedCount < existingFields.length) {
- toast.error(`Removed ${removedCount} of ${existingFields.length} fields. Some may have failed.`);
+  toast.error(`Deleted ${removedCount} of ${existingFields.length} fields. Some may have failed.`);
  }
  }
 
@@ -318,7 +314,7 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
  const pos = findNonOverlappingPosition(pageW, pageH, SIGNATURE_FIELD.width, SIGNATURE_FIELD.height, existingOnPage);
 
  if (!pos) {
- toast.error(`No space left for a signature field on page ${page}`);
+  toast.error(`No space left for a signature field on page ${page}.`);
  continue;
  }
 
@@ -334,7 +330,7 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
  }
 
  if (fieldsToCreate.length === 0) {
- toast.error('Could not place any fields — all selected pages are full');
+  toast.error('Could not place any fields — all selected pages are full.');
  return;
  }
 
@@ -345,17 +341,17 @@ function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFi
  await documentApi.bulkAddFields(documentId, fieldsToCreate);
  }
 
- toast.success(
- `Replaced fields: ${fieldsToCreate.length} signature field${fieldsToCreate.length > 1 ? 's' : ''} now on pages ${pages.join(', ')} for ${signer.name}`,
- { duration: 4000 }
- );
+  toast.success(
+    `Replaced fields: ${fieldsToCreate.length} signature field${fieldsToCreate.length > 1 ? 's' : ''} now on pages ${pages.join(', ')} for ${signer.name}.`,
+    { duration: 4000 }
+  );
  
  setPageInput('');
  setMode(null);
  setOpen(false);
  onApplied();
  } catch (err) {
- toast.error(err?.response?.data?.error?.message || 'Failed to apply fields');
+  toast.error(err?.response?.data?.error?.message || 'Failed to apply fields.');
  } finally {
  setApplying(false);
  }
@@ -466,7 +462,7 @@ function SignerCard({ signer, signerIndex, documentId, totalPages, allFields, pa
  </div>
  <div className="flex-1 min-w-0">
  {signer.signing_order && (
- <span className="text-[10px] font-medium text-gray-400">
+  <span className="text-xs font-medium text-gray-400">
  #{signer.signing_order}
  </span>
  )}
@@ -515,12 +511,12 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
  setSaving(true);
  try {
  await documentApi.addSigner(documentId, payload);
- toast.success(`${payload.name} added`);
+  toast.success(`${payload.name} added.`);
  onAdded();
  onClose();
  reset();
  } catch (err) {
- toast.error(err?.response?.data?.error?.message || 'Failed to add signer');
+  toast.error(err?.response?.data?.error?.message || 'Failed to add signer.');
  } finally {
  setSaving(false);
  }
@@ -604,7 +600,7 @@ function SendPanel({ documentId, onSent }) {
       const res = await documentApi.validate(documentId);
       setResult(res.data);
     } catch {
-      toast.error('Validation failed');
+      toast.error('Validation failed.');
     } finally {
       setValidating(false);
     }
@@ -615,14 +611,14 @@ function SendPanel({ documentId, onSent }) {
     setExpiredError(false);
     try {
       await documentApi.send(documentId);
-      toast.success('Document sent');
+      toast.success('Document sent.');
       onSent();
     } catch (err) {
       const code = err?.response?.data?.error?.code;
       if (code === 'DOCUMENT_EXPIRED') {
         setExpiredError(true);
       } else {
-        toast.error(err?.response?.data?.error?.message || 'Failed to send');
+        toast.error(err?.response?.data?.error?.message || 'Failed to send.');
       }
     } finally {
       setSending(false);
@@ -675,17 +671,6 @@ function SendPanel({ documentId, onSent }) {
   );
 }
 
-// ─── helpers ───────────────────────────────────────────────────────────────────
-function guessSizeLabel(w, h) {
- const near = (a, b) => Math.abs(a - b) <= 4;
- if (near(w, 794) && near(h, 1123)) return 'A4';
- if (near(w, 559) && near(h, 794)) return 'A5';
- if (near(w, 1123) && near(h, 1587)) return 'A3';
- if (near(w, 816) && near(h, 1056)) return 'Letter';
- if (near(w, 816) && near(h, 1344)) return 'Legal';
- return `${w}×${h}`;
-}
-
 // ─── DocumentEditorPage ────────────────────────────────────────────────────────
 export default function DocumentEditorPage() {
  const { id } = useParams();
@@ -711,23 +696,29 @@ export default function DocumentEditorPage() {
 
   const doc = data?.data?.document;
 
+  const toLocalDatetimeString = (date) => {
+    const pad = n => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
   const [expiryDate, setExpiryDate] = useState('');
   useEffect(() => {
     if (doc?.expires_at) {
-      const d = new Date(doc.expires_at);
-      setExpiryDate(d.toISOString().slice(0, 16));
+      setExpiryDate(toLocalDatetimeString(new Date(doc.expires_at)));
     }
   }, [doc?.expires_at]);
 
   const handleUpdateExpiry = async (e) => {
     const val = e.target.value;
+    const prev = expiryDate;
     setExpiryDate(val);
     try {
-      const saveVal = val ? val.replace('T', ' ') + ':00' : null;
+      const saveVal = val ? new Date(val + ':00').toISOString().slice(0, 19).replace('T', ' ') : null;
       await documentApi.update(id, { expires_at: saveVal });
       refetch();
     } catch (err) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to update expiry date');
+      setExpiryDate(prev);
+      toast.error(err?.response?.data?.error?.message || 'Failed to update expiry date.');
     }
   };
 
@@ -766,7 +757,7 @@ export default function DocumentEditorPage() {
  });
  refetch();
  } catch {
- toast.error('Failed to save position');
+    toast.error('Failed to save position.');
  }
  }, [id, refetch]);
 
@@ -774,9 +765,9 @@ export default function DocumentEditorPage() {
  try {
  await documentApi.removeField(id, fieldId);
  refetch();
- toast.success('Field removed');
+  toast.success('Field deleted.');
  } catch {
- toast.error('Failed to remove field');
+    toast.error('Failed to delete field.');
  }
  }, [id, refetch]);
 
@@ -784,9 +775,9 @@ export default function DocumentEditorPage() {
  try {
  await documentApi.removeSigner(id, signerId);
  refetch();
- toast.success('Signer removed');
+  toast.success('Signer deleted.');
  } catch (err) {
- toast.error(err?.response?.data?.error?.message || 'Failed to remove signer');
+  toast.error(err?.response?.data?.error?.message || 'Failed to delete signer.');
  }
  }, [id, refetch]);
 
@@ -836,7 +827,7 @@ export default function DocumentEditorPage() {
           type="datetime-local"
           value={expiryDate}
           onChange={handleUpdateExpiry}
-          min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+          min={toLocalDatetimeString(new Date(Date.now() + 60 * 60 * 1000))}
           className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
         />
       </div>
@@ -915,7 +906,7 @@ export default function DocumentEditorPage() {
 
         {/* Mobile toggle bar */}
         <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-200 bg-white">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-all">
+          <button onClick={() => setSidebarOpen(true)} className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-all">
             <Menu size={20} />
           </button>
           <span className="text-sm font-semibold text-gray-900 truncate">{doc.title}</span>
@@ -987,7 +978,7 @@ export default function DocumentEditorPage() {
  {/* Page separator */}
  {i < totalPages - 1 && (
  <div className="flex items-center justify-center py-2">
- <span className="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-200">
+  <span className="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-200">
  Page {i + 2}
  </span>
  </div>

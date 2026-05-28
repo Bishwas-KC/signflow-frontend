@@ -1,14 +1,15 @@
 import { useState, useRef } from 'react';
 import { FileText, Upload, X } from 'lucide-react';
 import { formatFileSize, classNames } from '@/utils/helpers';
+import toast from 'react-hot-toast';
 
 export function FileUpload({ 
  value, 
  onChange, 
  accept = '.pdf', 
- maxSize = 20 * 1024 * 1024, // 20MB
- label = "Upload File",
- description = "PDF Only — max 20MB"
+  maxSize = 10 * 1024 * 1024, // 10MB
+  label = "Upload File",
+  description = "PDF Only — max 10MB"
 }) {
  const [isDragging, setIsDragging] = useState(false);
  const fileInputRef = useRef(null);
@@ -34,11 +35,11 @@ export function FileUpload({
 
   const validateAndSetFile = (file) => {
     if (maxSize && file.size > maxSize) {
-      alert(`File is too large. Max size is ${formatFileSize(maxSize)}`);
+      toast.error(`File is too large. Max size is ${formatFileSize(maxSize)}`);
       return;
     }
     if (accept && !file.name.toLowerCase().endsWith('.pdf')) {
-      alert('Only PDF files are allowed.');
+      toast.error('Only PDF files are allowed.');
       return;
     }
     onChange(file);
@@ -91,10 +92,10 @@ export function FileUpload({
  e.stopPropagation();
  onChange(null);
  }}
- className="mt-4 p-2 text-gray-400 hover:text-red-500 transition-colors"
+  className="mt-4 p-3 text-gray-400 hover:text-red-500 transition-colors min-h-[44px]"
  >
  <X size={18} />
- <span className="text-xs font-bold ml-1">Remove</span>
+  <span className="text-xs font-bold ml-1">Delete</span>
  </button>
  </div>
  ) : (

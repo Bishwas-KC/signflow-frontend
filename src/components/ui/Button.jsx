@@ -10,10 +10,10 @@ const variants = {
 };
 
 const sizes = {
- xs: 'px-2.5 py-1.5 text-xs',
- sm: 'px-3 py-1.5 text-sm',
- md: 'px-4 py-2 text-sm',
- lg: 'px-6 py-2.5 text-base',
+  xs: 'px-2.5 py-1.5 text-xs min-h-[44px]',
+  sm: 'px-3 py-1.5 text-sm min-h-[44px]',
+  md: 'px-4 py-2 text-sm min-h-[44px]',
+  lg: 'px-6 py-2.5 text-base min-h-[44px]',
 };
 
 export function Button({

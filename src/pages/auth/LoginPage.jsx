@@ -35,7 +35,7 @@ export default function LoginPage() {
  const handleResendVerification = async () => {
  try {
  await authApi.resendVerification(userEmail);
- toast.success('Verification email sent!');
+  toast.success('Verification email sent.');
  } catch {
  toast.error('Failed to resend email.');
  }
@@ -93,7 +93,7 @@ export default function LoginPage() {
 
  <div className="relative flex items-center gap-4">
  <div className="flex-1 h-px bg-gray-100" />
- <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">or</span>
+  <span className="text-xs font-black text-gray-400 uppercase tracking-widest">or</span>
  <div className="flex-1 h-px bg-gray-100" />
  </div>
 
@@ -141,13 +141,13 @@ export default function LoginPage() {
  </p>
  </div>
  </div>
- <button
- type="button"
- onClick={handleResendVerification}
- className="w-full py-2 text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
- >
- Resend verification email
- </button>
+  <button
+          type="button"
+          onClick={handleResendVerification}
+          className="w-full py-3 text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors min-h-[44px]"
+          >
+            Resend verification email
+          </button>
  </div>
  ) : (
  serverError && (

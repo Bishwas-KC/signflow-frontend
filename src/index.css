@@ -36,3 +36,24 @@
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ── Responsive viewport height ────────── */
+@supports (height: 100dvh) {
+  .h-dynamic { height: 100dvh; }
+  .min-h-dynamic { min-height: 100dvh; }
+}
+
+/* ── iOS Safari 16px font fix ──────────── */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
+/* ── Reduced motion ────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .animate-pulse { animation: none !important; }
+}

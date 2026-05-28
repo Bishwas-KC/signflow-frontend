@@ -3,10 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { signApi } from '@/api/sign.api';
 import { Spinner } from '@/components/ui/Spinner';
 import { AlertTriangle } from 'lucide-react';
-
-function getCurrentUser() {
- try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
-}
+import { getCurrentUser } from '@/utils/helpers';
 
 export default function SigningAuthPage() {
  const { token } = useParams();
@@ -26,9 +23,9 @@ export default function SigningAuthPage() {
  const signerEmail = data.signer?.email;
  const signerStatus = data.signer?.status;
 
- if (signerStatus === 'signed') {
- navigate(`/sign/${token}/thank-you`, { replace: true });
- return;
+if (signerStatus === 'signed') {
+navigate(`/sign/${token}/thank-you?doc_id=${data?.document?.id}`, { replace: true });
+return;
  }
 
  if (signerStatus === 'declined') {
@@ -41,7 +38,7 @@ export default function SigningAuthPage() {
  if (user) {
  if (signerEmail && user.email?.toLowerCase() !== signerEmail.toLowerCase()) {
  setLoadError(
- `You are signed in as ${user.email}, but this document is for ${signerEmail}. Please sign out and use the correct account.`
+  `You are signed in as ${user.email ?? '(unknown)'}, but this document is for ${signerEmail}. Please sign out and use the correct account.`
  );
  return;
  }
@@ -58,41 +55,26 @@ export default function SigningAuthPage() {
  })();
  }, [token, navigate]);
 
- if (loadError) {
- return (
- <div style={{
- minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
- background: '#060d1a', padding: 24,
- }}>
-  <div style={{
-    maxWidth: 400, width: '100%', textAlign: 'center',
-    background: '#0f172a', border: '1px solid #1e293b',
-    borderRadius: 20, padding: 40,
-  }}>
-  <div style={{
-    width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-  }}>
-  <AlertTriangle size={24} style={{ color: '#ef4444' }} />
-  </div>
-  <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>
-  Link Not Valid
-  </h2>
-  <p style={{ fontSize: 13, color: '#475569', lineHeight: 1.6, wordBreak: 'break-word' }}>{loadError}</p>
- </div>
- </div>
- );
- }
+  if (loadError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#060d1a] p-6">
+        <div className="max-w-sm w-full text-center bg-slate-900 border border-slate-800 rounded-[20px] p-10">
+          <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle size={24} className="text-red-500" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-100 mb-2">Link Not Valid</h2>
+          <p className="text-sm text-slate-500 leading-relaxed break-words">{loadError}</p>
+        </div>
+      </div>
+    );
+  }
 
- return (
-  <div style={{
-    minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: '#060d1a', padding: 24,
-  }}>
-  <div style={{ textAlign: 'center' }}>
- <Spinner size="lg" />
- <p style={{ color: '#334155', fontSize: 13, marginTop: 16 }}>Loading invitation…</p>
- </div>
- </div>
- );
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#060d1a] p-6">
+      <div className="text-center">
+        <Spinner size="lg" />
+        <p className="text-sm text-slate-600 mt-4">Loading invitation…</p>
+      </div>
+    </div>
+  );
 }

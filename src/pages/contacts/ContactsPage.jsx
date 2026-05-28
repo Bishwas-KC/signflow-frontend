@@ -34,8 +34,8 @@ function ContactForm({ contact, onSuccess, onClose }) {
 
   return (
     <form onSubmit={handleSubmit(save)} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
           <Input label="Full Name *" placeholder="John Doe"
             error={errors.full_name?.message}
             {...register('full_name', { required: 'Name is required' })} />
@@ -44,7 +44,7 @@ function ContactForm({ contact, onSuccess, onClose }) {
         <Input label="Phone" placeholder="+977-98..." {...register('phone')} />
         <Input label="Company" placeholder="TechCorp Nepal" {...register('company_name')} />
         <Input label="Designation" placeholder="CEO" {...register('designation')} />
-        <Input label="PAN Number" placeholder="600123456" {...register('pan_number')} />
+        <Input label="PAN" placeholder="600123456" {...register('pan_number')} />
       </div>
       <div className="flex gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onClose} className="flex-1 rounded-xl">Cancel</Button>
@@ -87,7 +87,7 @@ function Pagination({ meta, page, onPageChange }) {
           <button
             key={p}
             onClick={() => onPageChange(p)}
-            className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${
+            className={`w-11 h-11 text-xs font-bold rounded-lg transition-all ${
               p === current
                 ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
                 : 'text-gray-500 hover:bg-gray-100'
@@ -99,7 +99,7 @@ function Pagination({ meta, page, onPageChange }) {
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= meta.last_page}
-          className="w-8 h-8 flex items-center justify-center text-xs font-bold text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed bg-gray-50 hover:bg-gray-100 disabled:bg-transparent rounded-lg transition-all"
+          className="w-11 h-11 flex items-center justify-center text-xs font-bold text-gray-400 hover:text-gray-600 disabled:text-gray-200 disabled:cursor-not-allowed bg-gray-50 hover:bg-gray-100 disabled:bg-transparent rounded-lg transition-all"
         >
           <ChevronRight size={14} />
         </button>
@@ -189,13 +189,13 @@ function ContactCard({ contact, onEdit, onDelete }) {
       <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50">
         <button
           onClick={() => onEdit(contact)}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-gray-400 hover:text-indigo-600 bg-transparent hover:bg-indigo-50 rounded-lg transition-all"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 sm:py-1.5 text-xs font-semibold text-gray-400 hover:text-indigo-600 bg-transparent hover:bg-indigo-50 rounded-lg transition-all min-h-[44px] sm:min-h-0"
         >
           <Edit3 size={12} /> Edit
         </button>
         <button
           onClick={() => onDelete(contact)}
-          className="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-gray-400 hover:text-red-500 bg-transparent hover:bg-red-50 rounded-lg transition-all"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 py-3 sm:py-1.5 text-xs font-semibold text-gray-400 hover:text-red-500 bg-transparent hover:bg-red-50 rounded-lg transition-all min-h-[44px] sm:min-h-0"
         >
           <Trash2 size={12} /> Delete
         </button>
@@ -227,7 +227,7 @@ function ContactRow({ contact, onEdit, onDelete }) {
         <span className="text-sm text-gray-600 truncate max-w-[160px] block">{contact.company_name || '—'}</span>
       </td>
       <td className="px-4 py-4 hidden md:table-cell">
-        <span className="inline-flex items-center px-2 py-0.5 text-[11px] font-bold text-indigo-600 bg-indigo-50 rounded-md leading-none">
+        <span className="inline-flex items-center px-2 py-0.5 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-md leading-none">
           {contact.role_label}
         </span>
       </td>
@@ -292,9 +292,9 @@ export default function ContactsPage() {
   const meta = data?.meta || {};
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-5 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 flex-col sm:flex-row">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Contacts</h1>
           <span className="hidden sm:inline-flex items-center px-2.5 py-1 text-xs font-bold text-indigo-600 bg-indigo-50 rounded-full leading-none">
@@ -316,7 +316,7 @@ export default function ContactsPage() {
               <List size={15} />
             </button>
           </div>
-          <Button size="md" className="rounded-xl shadow-lg shadow-indigo-500/20 flex-shrink-0" onClick={() => setModal('create')}>
+          <Button size="lg" className="rounded-xl shadow-lg shadow-indigo-500/20 flex-shrink-0" onClick={() => setModal('create')}>
             <UserPlus size={16} /> Add Contact
           </Button>
         </div>
@@ -328,6 +328,7 @@ export default function ContactsPage() {
         <input
           value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
           placeholder="Search by name, email, or company..."
+          aria-label="Search contacts"
           className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-300 text-gray-900 transition-all placeholder:text-gray-400"
         />
       </div>
@@ -369,12 +370,12 @@ export default function ContactsPage() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-5 py-4">Name</th>
-                    <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden sm:table-cell">Phone</th>
-                    <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden lg:table-cell">Company</th>
-                    <th className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden md:table-cell">Role</th>
+                    <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-5 py-4">Name</th>
+                    <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden sm:table-cell">Phone</th>
+                    <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden lg:table-cell">Company</th>
+                    <th className="text-xs font-bold text-gray-400 uppercase tracking-wider px-4 py-4 hidden md:table-cell">Role</th>
                     <th className="px-5 py-4">
-                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider float-right">Actions</span>
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider float-right">Actions</span>
                     </th>
                   </tr>
                 </thead>
@@ -404,7 +405,7 @@ export default function ContactsPage() {
         onConfirm={() => deleteMut.mutate(deleteTarget.id)}
         loading={deleteMut.isPending}
         title="Delete Contact?"
-        message={`Are you sure you want to remove "${deleteTarget?.full_name}"? This will remove them from your directory but won't affect past documents.`}
+        message={`Are you sure you want to delete "${deleteTarget?.full_name}"? This will delete them from your directory but won't affect past documents.`}
         confirmLabel="Delete Permanently"
       />
     </div>

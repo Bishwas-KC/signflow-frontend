@@ -27,26 +27,31 @@ export default function GoogleCallbackPage() {
  const signToken = sessionStorage.getItem('sign_token');
  sessionStorage.removeItem('sign_token'); // Clean up
 
- // Exchange code for token via Laravel backend
- import('@/api/auth.api').then(({ authApi }) => {
- authApi.googleCallback(code)
- .then(res => {
- const userData = res.data.data || res.data;
- saveSession(userData.user, userData.token);
- toast.success(`Welcome, ${userData.user.name}!`);
+  // Exchange code for token via Laravel backend
+  import('@/api/auth.api')
+  .then(({ authApi }) => {
+  authApi.googleCallback(code)
+  .then(res => {
+  const userData = res.data.data || res.data;
+  saveSession(userData.user, userData.token);
+   toast.success(`Welcome, ${userData.user.name}.`);
 
- // If coming from signing page, redirect back to signing
- if (signToken) {
- navigate(`/sign/${signToken}/sign`, { replace: true });
- } else {
- navigate('/dashboard', { replace: true });
- }
- })
- .catch(() => {
- toast.error('Google authentication failed. Please try again.');
- navigate('/login', { replace: true });
- });
- });
+  // If coming from signing page, redirect back to signing
+  if (signToken) {
+  navigate(`/sign/${signToken}/sign`, { replace: true });
+  } else {
+  navigate('/dashboard', { replace: true });
+  }
+  })
+  .catch(() => {
+  toast.error('Google authentication failed. Please try again.');
+  navigate('/login', { replace: true });
+  });
+  })
+  .catch(() => {
+  toast.error('Failed to load authentication module.');
+  navigate('/login', { replace: true });
+  });
   // Intentionally runs once on mount — searchParams, saveSession, navigate are stable
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

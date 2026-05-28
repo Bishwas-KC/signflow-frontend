@@ -4,10 +4,7 @@ export const companyApi = {
  list: (params = {}) =>
  api.get('/companies', { params }).then(r => r.data),
 
- get: (id) =>
- api.get(`/companies/${id}`).then(r => r.data),
-
- create: (data) =>
+  create: (data) =>
  api.post('/companies', data).then(r => r.data),
 
  update: (id, data) =>

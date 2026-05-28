@@ -1,4 +1,4 @@
-import { formatDateTime, getInitials } from '@/utils/helpers';
+import { formatDateTime } from '@/utils/helpers';
 import { FileText, CheckCircle, Send, XCircle, Eye, Clock, User } from 'lucide-react';
 
 const eventConfig = {
@@ -20,7 +20,7 @@ export function AuditLogTimeline({ logs = [] }) {
  if (logList.length === 0) {
  return (
  <div className="py-8 text-center">
- <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No activity yet.</p>
+  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No activity found</p>
  </div>
  );
  }

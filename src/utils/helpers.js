@@ -25,3 +25,7 @@ export const getInitials = (name = '') =>
  name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
 
 export const classNames = (...classes) => classes.filter(Boolean).join(' ');
+
+export const getCurrentUser = () => {
+  try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
+};

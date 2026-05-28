@@ -13,6 +13,7 @@ const DashboardPage = lazy(() => import('@/pages/dashboard/DashboardPage'));
 const DocumentsPage = lazy(() => import('@/pages/documents/DocumentsPage'));
 const DocumentEditorPage = lazy(() => import('@/pages/documents/DocumentEditorPage'));
 const DocumentDetailPage = lazy(() => import('@/pages/documents/DocumentDetailPage'));
+const ProfilePage = lazy(() => import('@/pages/profile/ProfilePage'));
 const ContactsPage = lazy(() => import('@/pages/contacts/ContactsPage'));
 const CompaniesPage = lazy(() => import('@/pages/companies/CompaniesPage'));
 const SigningLayout = lazy(() => import('@/layouts/SigningLayout'));
@@ -20,6 +21,8 @@ const SigningPage = lazy(() => import('@/pages/sign/SigningPage'));
 const SigningAuthPage = lazy(() => import('@/pages/sign/SigningauthPage'));
 const ThankYouPage = lazy(() => import('@/pages/sign/ThankYouPage'));
 const GoogleCallbackPage = lazy(() => import('@/pages/auth/GoogleCallbackPage'));
+const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
@@ -58,14 +61,17 @@ export default function App() {
  <Route path="/auth/google/callback" element={<LazyRoute><GoogleCallbackPage /></LazyRoute>} />
   <Route path="/" element={<LazyRoute><LandingPage /></LazyRoute>} />
   <Route path="/login" element={<LazyRoute><AuthLayout><LoginPage /></AuthLayout></LazyRoute>} />
-  <Route path="/register" element={<LazyRoute><AuthLayout><RegisterPage /></AuthLayout></LazyRoute>} />
+   <Route path="/register" element={<LazyRoute><AuthLayout><RegisterPage /></AuthLayout></LazyRoute>} />
+   <Route path="/forgot-password" element={<LazyRoute><AuthLayout><ForgotPasswordPage /></AuthLayout></LazyRoute>} />
+  <Route path="/reset-password/:token" element={<LazyRoute><ResetPasswordPage /></LazyRoute>} />
  <Route path="/auth/verify-email/:id/:token" element={<LazyRoute><EmailVerificationPage /></LazyRoute>} />
  <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
  <Route path="/dashboard" element={<LazyRoute><DashboardPage /></LazyRoute>} />
  <Route path="/dashboard/documents" element={<LazyRoute><DocumentsPage /></LazyRoute>} />
  <Route path="/dashboard/documents/:id" element={<LazyRoute><DocumentDetailPage /></LazyRoute>} />
  <Route path="/dashboard/documents/:id/editor" element={<LazyRoute><DocumentEditorPage /></LazyRoute>} />
- <Route path="/dashboard/contacts" element={<LazyRoute><ContactsPage /></LazyRoute>} />
+  <Route path="/dashboard/profile" element={<LazyRoute><ProfilePage /></LazyRoute>} />
+  <Route path="/dashboard/contacts" element={<LazyRoute><ContactsPage /></LazyRoute>} />
     <Route path="/dashboard/companies" element={<LazyRoute><CompaniesPage /></LazyRoute>} />
   </Route>
    <Route element={<LazyRoute><SigningLayout /></LazyRoute>}>

@@ -10,6 +10,23 @@ export function ActionRequiredBanner({ doc, signers, currentSigner, isSignable, 
   const isSigner = doc.role === 'signer';
   const hasDeclined = currentSigner?.status === 'declined';
 
+  // Document declined — show banner for declining signer, hide for everyone else
+  if (doc.status === 'declined') {
+    if (isSigner && hasDeclined) {
+      return (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl px-5 py-4 flex items-center gap-4">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-rose-100">
+            <Clock size={20} className="text-rose-500" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-rose-900">You have declined to sign this document.</p>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
+
   // Sequential turn indicator
   if (doc.signing_mode === 'sequential' && doc.current_signer && !isSignable) {
     return (
@@ -46,20 +63,6 @@ export function ActionRequiredBanner({ doc, signers, currentSigner, isSignable, 
           <Pen size={15} /> Sign Now
           <ArrowRight size={15} />
         </Button>
-      </div>
-    );
-  }
-
-  // Signer declined
-  if (isSigner && hasDeclined) {
-    return (
-      <div className="bg-rose-50 border border-rose-200 rounded-xl px-5 py-4 flex items-center gap-4">
-        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border border-rose-100">
-          <Clock size={20} className="text-rose-500" />
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-semibold text-rose-900">You have declined to sign this document.</p>
-        </div>
       </div>
     );
   }

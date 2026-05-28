@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
+import { Badge } from '@/components/ui/Badge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -55,9 +56,9 @@ function CompanyForm({ company, onSuccess, onClose }) {
   return (
  <form onSubmit={handleSubmit(save)} className="space-y-4">
  {/* Tab bar */}
-  <div className="flex gap-1 border-b border-gray-200 -mx-6 px-6 mb-4 overflow-x-auto flex-nowrap">
+  <div role="tablist" className="flex gap-1 border-b border-gray-200 -mx-6 px-6 mb-4 overflow-x-auto flex-nowrap">
  {TABS.map(t => (
- <button key={t} type="button" onClick={() => setTab(t)}
+ <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
  tab === t ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'
  }`}
@@ -66,11 +67,11 @@ function CompanyForm({ company, onSuccess, onClose }) {
  </div>
 
  {tab === 'Info' && (
- <div className="space-y-4">
+  <div role="tabpanel" className="space-y-4">
  <Input label="Company Name *" {...register('name', { required: true })} />
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
   <Input label="Registration Number" {...register('registration_number')} />
-  <Input label="PAN Number" {...register('pan_number')} />
+   <Input label="PAN" {...register('pan_number')} />
   <Input label="Industry" placeholder="Technology" {...register('industry')} />
   <Input label="Established Date" type="date" {...register('established_date')} />
   </div>
@@ -78,7 +79,7 @@ function CompanyForm({ company, onSuccess, onClose }) {
   )}
 
   {tab === 'Contact' && (
-  <div className="space-y-4">
+  <div role="tabpanel" className="space-y-4">
   <Input label="Phone" placeholder="+977-1-..." {...register('phone')} />
   <Input label="Email" type="email" {...register('email')} />
   <Input label="Website" placeholder="https://..." {...register('website')} />
@@ -86,7 +87,7 @@ function CompanyForm({ company, onSuccess, onClose }) {
   )}
 
   {tab === 'Address' && (
-  <div className="space-y-4">
+  <div role="tabpanel" className="space-y-4">
   <Input label="Street Address" {...register('street_address')} />
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
  <Input label="City" {...register('city')} />
@@ -97,8 +98,8 @@ function CompanyForm({ company, onSuccess, onClose }) {
  </div>
  )}
 
- {tab === 'Branding' && (
- <div className="space-y-4">
+  {tab === 'Branding' && (
+  <div role="tabpanel" className="space-y-4">
  {company && (
  <>
  <div>
@@ -161,7 +162,7 @@ export default function CompaniesPage() {
  mutationFn: (id) => companyApi.delete(id),
  onSuccess: () => {
  queryClient.invalidateQueries({ queryKey: ['companies'] });
- toast.success('Company profile removed.');
+  toast.success('Company profile deleted.');
  setDel(null);
  },
  });
@@ -175,7 +176,7 @@ export default function CompaniesPage() {
  };
 
  return (
- <div className="p-6 lg:p-10 max-w-7xl mx-auto space-y-10 animate-fade-in">
+ <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto space-y-6 sm:space-y-10 animate-fade-in">
  <PageHeader
  title="Business Profiles"
  description="Manage your business profiles, branding assets, and corporate signature settings."
@@ -188,9 +189,9 @@ export default function CompaniesPage() {
  <p className="text-sm font-black text-gray-400 uppercase tracking-widest animate-pulse">Loading profiles...</p>
  </div>
  ) : companies.length === 0 ? (
- <div className="py-24 bg-white rounded-[2.5rem] border border-dashed border-gray-200">
+ <div className="py-12 sm:py-24 bg-white rounded-[2.5rem] border border-dashed border-gray-200">
  <EmptyState
- icon={Building2} title="No companies yet"
+  icon={Building2} title="No companies found"
  description="Register your company to enable custom branding on your signed documents and manage team workflows."
  action={<Button variant="subtle" className="rounded-2xl px-10" onClick={() => setModal('create')}><Plus size={16} />Create Company Profile</Button>}
  />
@@ -198,7 +199,7 @@ export default function CompaniesPage() {
  ) : (
  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
  {companies.map(c => (
- <div key={c.id} className="bg-white rounded-[2rem] border border-gray-100 p-8 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative">
+ <div key={c.id} className="bg-white rounded-[2rem] border border-gray-100 p-6 sm:p-8 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative">
  <div className="flex items-start gap-5 mb-8">
  {c.branding?.logo_url ? (
  <div className="w-16 h-16 bg-white rounded-2xl border border-gray-100 p-2 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
@@ -211,7 +212,7 @@ export default function CompaniesPage() {
  )}
  <div className="flex-1 min-w-0">
  <p className="font-black text-gray-900 text-xl truncate group-hover:text-indigo-600 transition-colors tracking-tight">{c.info?.name}</p>
- {c.info?.industry && <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1.5">{c.info.industry}</p>}
+  {c.info?.industry && <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mt-1.5">{c.info.industry}</p>}
  {c.user_role && (
  <Badge size="xs" variant="indigo" className="mt-3 px-3 py-0.5">
  {c.user_role}
@@ -236,12 +237,12 @@ export default function CompaniesPage() {
  {c.contact?.website && (
  <div className="flex items-center gap-4 text-xs font-bold text-gray-600">
  <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm"><Globe size={14} className="text-gray-400" /></div>
- <span className="truncate">{c.contact.website.replace(/^https?:\/\//, '')}</span>
+ <span className="truncate">{c.contact?.website?.replace(/^https?:\/\//, '')}</span>
  </div>
  )}
  {c.address?.city && (
  <div className="pt-2 border-t border-gray-100">
- <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest text-center">
+  <p className="text-xs font-black text-gray-300 uppercase tracking-widest text-center">
  {[c.address.city, c.address.province, c.address.country].filter(Boolean).join(' · ')}
  </p>
  </div>
@@ -250,12 +251,12 @@ export default function CompaniesPage() {
 
  <div className="flex gap-2 pt-6 border-t border-gray-50">
  <button onClick={() => setModal(c)}
- className="flex-1 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-indigo-600 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-indigo-50 transition-all">
+  className="flex-1 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-indigo-600 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-indigo-50 transition-all min-h-[44px]">
  <Edit3 size={14} />Settings
  </button>
  <button onClick={() => setDel(c)}
- className="flex-1 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-500 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-red-50 transition-all">
- <Trash2 size={14} />Remove
+  className="flex-1 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-red-500 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-red-50 transition-all min-h-[44px]">
+  <Trash2 size={14} />Delete
  </button>
  </div>
  </div>
@@ -280,9 +281,9 @@ export default function CompaniesPage() {
  open={!!deleteTarget} onClose={() => setDel(null)}
  onConfirm={() => deleteMut.mutate(deleteTarget.id)}
  loading={deleteMut.isPending}
- title="Remove Company Profile?"
- message={`This will permanently remove "${deleteTarget?.info?.name}" and all associated branding assets. This action is not reversible.`}
- confirmLabel="Remove Profile"
+  title="Delete Company Profile?"
+  message={`This will permanently remove "${deleteTarget?.info?.name}" and all associated branding assets. This action is not reversible.`}
+  confirmLabel="Delete Profile"
  />
  </div>
  );

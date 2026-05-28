@@ -1,4 +1,4 @@
-import { Users, CheckCircle, XCircle, Clock, ChevronRight } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { getInitials } from '@/utils/helpers';
 
 const statusStyles = {

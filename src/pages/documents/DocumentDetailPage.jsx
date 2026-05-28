@@ -14,6 +14,7 @@ import {
   FileText, AlertTriangle, XCircle, History,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getCurrentUser } from '@/utils/helpers';
 
 // ── Cancel Request Banner ───────────────────────────────────────────────
 
@@ -60,55 +61,6 @@ function CancelRequestBanner({ doc, onApprove, canApprove }) {
   );
 }
 
-// ── Delete Request Banner ────────────────────────────────────────────────
-
-function DeleteRequestBanner({ doc, onApprove, onReject, onCancelDelete, canApprove, canReject, isInitiator }) {
-  const dr = doc.deletion_request;
-  if (!dr) return null;
-
-  return (
-    <div className="bg-red-50 border border-red-200/70 rounded-xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-      <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-        <AlertTriangle size={20} className="text-red-600" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-red-900">Deletion Pending Approval</p>
-        <p className="text-xs text-red-700 mt-0.5">
-          {dr.created_at ? new Date(dr.created_at).toLocaleDateString() : ''}
-        </p>
-        <p className="text-xs text-red-600 mt-1">Awaiting approval from all signed signers.</p>
-      </div>
-      <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-        {isInitiator && (
-          <Button size="sm" variant="secondary" className="rounded-lg flex-1 sm:flex-none"
-            loading={onCancelDelete.isPending}
-            onClick={() => onCancelDelete.mutate()}>
-            Withdraw
-          </Button>
-        )}
-        {canApprove && (
-          <Button size="sm" variant="danger" className="rounded-lg flex-1 sm:flex-none"
-            loading={onApprove.isPending}
-            onClick={() => onApprove.mutate()}>
-            Approve
-          </Button>
-        )}
-        {canReject && (
-          <Button size="sm" variant="secondary" className="rounded-lg flex-1 sm:flex-none"
-            loading={onReject.isPending}
-            onClick={() => onReject.mutate()}>
-            Reject
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function getCurrentUser() {
-  try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────
 
 export default function DocumentDetailPage() {
@@ -150,34 +102,6 @@ export default function DocumentDetailPage() {
     },
   });
 
-  const approveDeleteMut = useMutation({
-    mutationFn: () => documentApi.approveDelete(id),
-    onSuccess: (res) => {
-      if (res?.data?.deleted) {
-        toast.success('Document deleted successfully.');
-        navigate('/dashboard/documents', { replace: true });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['document', id] });
-        toast.success('Deletion approved.');
-      }
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error?.message || 'Failed to approve deletion.');
-    },
-  });
-
-  const deleteFileMut = useMutation({
-    mutationFn: () => documentApi.deleteOriginalFile(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['document', id] });
-      toast.success('Original file deleted.');
-      setDeleteFileModal(false);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error?.message || 'Failed to delete file.');
-    },
-  });
-
   const deleteMut = useMutation({
     mutationFn: () => documentApi.delete(id),
     onSuccess: () => {
@@ -201,45 +125,6 @@ export default function DocumentDetailPage() {
     },
   });
 
-  const requestDeleteMut = useMutation({
-    mutationFn: () => documentApi.requestDelete(id),
-    onSuccess: (res) => {
-      if (!res?.data?.request_id) {
-        toast.success('Document deleted successfully.');
-        navigate('/dashboard/documents', { replace: true });
-      } else {
-        queryClient.invalidateQueries({ queryKey: ['document', id] });
-        toast.success('Deletion request submitted.');
-        setDeleteFileModal(false);
-      }
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error?.message || 'Failed to request deletion.');
-    },
-  });
-
-  const rejectDeleteMut = useMutation({
-    mutationFn: () => documentApi.rejectDelete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['document', id] });
-      toast.success('Deletion request rejected.');
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error?.message || 'Failed to reject deletion.');
-    },
-  });
-
-  const cancelDeleteMut = useMutation({
-    mutationFn: () => documentApi.cancelDelete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['document', id] });
-      toast.success('Deletion request withdrawn.');
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.error?.message || 'Failed to cancel deletion request.');
-    },
-  });
-
   const doc = data?.data?.document;
   const logs = logData?.data?.logs || logData?.data || [];
 
@@ -250,11 +135,6 @@ export default function DocumentDetailPage() {
   const hasDeclined = currentSigner?.status === 'declined';
   const isCurrentTurn = doc?.signing_mode !== 'sequential' || doc?.current_signing_order === currentSigner?.signing_order;
   const isSignable = doc?.status === 'in_progress' && isAnySigner && !isSignedSigner && !hasDeclined && isCurrentTurn;
-
-  const dr = doc?.deletion_request;
-  const isInitiator = dr?.requested_by_id === user?.id;
-  const canApproveDelete = dr && !isInitiator && (doc.role === 'owner' || isSignedSigner);
-  const canRejectDelete = canApproveDelete;
 
   if (isLoading) {
     return (
@@ -281,15 +161,10 @@ export default function DocumentDetailPage() {
   }
 
   return (
-    <div className="px-6 lg:px-8 pt-3 pb-4 lg:pb-6 max-w-7xl mx-auto space-y-4 animate-fade-in">
+    <div className="px-4 sm:px-6 lg:px-8 pt-3 pb-4 lg:pb-6 max-w-7xl mx-auto space-y-4 animate-fade-in">
       {/* Status banners */}
       {doc.status !== 'cancelled' && (
-        <>
-          <CancelRequestBanner doc={doc} onApprove={approveCancelMut} canApprove={isSignedSigner} />
-          <DeleteRequestBanner doc={doc} onApprove={approveDeleteMut} onReject={rejectDeleteMut}
-            onCancelDelete={cancelDeleteMut} isInitiator={isInitiator}
-            canApprove={canApproveDelete} canReject={canRejectDelete} />
-        </>
+        <CancelRequestBanner doc={doc} onApprove={approveCancelMut} canApprove={isSignedSigner} />
       )}
 
       {/* Header */}
@@ -355,24 +230,12 @@ export default function DocumentDetailPage() {
       <ConfirmDialog
         open={deleteFileModal} onClose={() => setDeleteFileModal(false)}
         onConfirm={() => {
-          if (doc.deletion_request) {
-            approveDeleteMut.mutate();
-          } else if (['draft', 'pending', 'cancelled'].includes(doc.status)) {
-            deleteMut.mutate();
-          } else {
-            requestDeleteMut.mutate();
-          }
+          deleteMut.mutate();
         }}
-        loading={deleteMut.isPending || requestDeleteMut.isPending || approveDeleteMut.isPending}
-        title={doc.deletion_request ? "Approve Deletion?" : "Delete Document?"}
-        message={
-          doc.deletion_request
-            ? "Your approval will permanently delete this document and all associated data."
-            : ['draft', 'pending', 'cancelled'].includes(doc.status)
-              ? "This document will be permanently deleted immediately."
-              : "This will create a deletion request requiring approval from all signed signers before the document is permanently deleted."
-        }
-        confirmLabel={doc.deletion_request ? "Approve Deletion" : "Continue"}
+        loading={deleteMut.isPending}
+        title="Delete Document?"
+        message="This document will be permanently deleted immediately."
+        confirmLabel="Delete"
       />
     </div>
   );
