@@ -45,12 +45,14 @@ export function ProfileContent() {
       const res = await signApi.getSavedSignatures();
       setSavedSignatures(res.data || []);
     } catch {
+      // Silently ignore — signatures are non-critical
     } finally {
       setLoadingSigs(false);
     }
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSignatures();
     setPasswordForm({ current_password: '', new_password: '', new_password_confirmation: '' });
     setPasswordErrors({});

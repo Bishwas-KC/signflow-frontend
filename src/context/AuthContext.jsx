@@ -9,24 +9,27 @@ export function AuthProvider({ children }) {
  try { return JSON.parse(localStorage.getItem('user')); }
  catch { return null; }
  });
- const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const path = window.location.pathname;
+    const token = localStorage.getItem('token');
+    return !(path.startsWith('/login') || path.startsWith('/register') || !token);
+  });
 
- // Verify token on mount
- useEffect(() => {
- const token = localStorage.getItem('token');
- if (!token) { setLoading(false); return; }
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
 
-  authApi.me()
-  .then(res => setUser(res.data.user))
-  .catch((error) => {
-  if (error?.response?.status === 401) {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  setUser(null);
-  }
-  })
-  .finally(() => setLoading(false));
- }, []);
+    authApi.me()
+      .then(res => setUser(res.data.user))
+      .catch((error) => {
+        if (error?.response?.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
  const saveSession = useCallback((userData, token) => {
  localStorage.setItem('token', token);
@@ -71,8 +74,11 @@ export function AuthProvider({ children }) {
  );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
- const ctx = useContext(AuthContext);
- if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
- return ctx;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
+  return ctx;
 }
+// React-refresh: AuthProvider (component) and useAuth (hook) intentionally coexist here.
+// The hook is re-exported from @/hooks/useAuth for consumer convenience.

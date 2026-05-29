@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { STATUS_LABELS, STATUS_COLORS } from '@/utils/constants';
-import { formatDate } from '@/utils/helpers';
+import { formatDate, formatDateTime } from '@/utils/helpers';
 import { classNames } from '@/utils/helpers';
 import { ArrowLeft, Download, Edit3, XCircle, Trash2, Clock, Calendar, User, Building, Shield } from 'lucide-react';
 import api from '@/api/axios';
@@ -53,7 +53,7 @@ export function DocumentHeader({ doc, onCancel, onDelete }) {
             {doc.expires_at ? (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full">
                 <Clock size={12} />
-                Expires {new Date(doc.expires_at).toLocaleDateString()}
+                Expires {formatDateTime(doc.expires_at)}
               </span>
             ) : (
               <span className="text-xs text-gray-400">No expiry</span>

@@ -18,7 +18,7 @@ const navItems = [
   { to: '/dashboard/companies', icon: Building2, label: 'Companies' },
 ];
 
-export function Sidebar({ collapsed, setCollapsed, sidebarOpen, setSidebarOpen, mobile = false }) {
+export function Sidebar({ collapsed, setCollapsed, setSidebarOpen, mobile = false }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isCollapsed = !mobile && collapsed;

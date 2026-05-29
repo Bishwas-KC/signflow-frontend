@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,10 +19,7 @@ const schema = z.object({
 });
 
 export default function RegisterPage() {
- const navigate = useNavigate();
- const [searchParams] = useSearchParams();
-
- const redirectTo = searchParams.get('redirect') || '/dashboard';
+  const [searchParams] = useSearchParams();
  const lockedEmail = searchParams.get('email') || '';
 
  const [step, setStep] = useState('form');
@@ -67,27 +64,7 @@ export default function RegisterPage() {
  }
  };
 
- // Auto-redirect to login after 3s on success page
- useEffect(() => {
- if (step !== 'success') return;
- const timer = setTimeout(() => {
- const stored = localStorage.getItem('pending_sign_redirect');
-  if (stored) {
-  let parsed = {};
-  try { parsed = JSON.parse(stored); } catch {}
-  const { redirect, email } = parsed;
-  const params = new URLSearchParams();
- if (redirect) params.set('redirect', redirect);
- if (email) params.set('email', email);
- navigate(`/login?${params.toString()}`, { replace: true });
- } else {
- navigate('/login', { replace: true });
- }
- }, 3000);
- return () => clearTimeout(timer);
- }, [step, navigate]);
-
- return (
+  return (
   <div className="space-y-4">
  <div>
  <h1 className="text-2xl font-bold text-gray-900">
@@ -128,8 +105,9 @@ export default function RegisterPage() {
  type="email"
  placeholder="you@example.com"
  error={errors.email?.message}
- disabled={!!lockedEmail}
+ readOnly={!!lockedEmail}
  {...register('email')}
+ className={lockedEmail ? 'bg-gray-50' : ''}
  />
  {lockedEmail && (
   <p className="flex items-center gap-1 text-xs font-medium text-indigo-500 mt-1">

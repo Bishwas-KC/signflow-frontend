@@ -140,7 +140,7 @@ export function TypeTab({ signerName, onSignatureReady, signatureData, saveToAcc
     const font = SIGNATURE_FONTS[fIdx];
     const fontFamily = font.css.replace(/,.*$/, '').trim();
 
-    try { await document.fonts.load(`bold 56px ${fontFamily}`); } catch {}
+    try { await document.fonts.load(`bold 56px ${fontFamily}`); } catch { /* Font may not load — fall back to system font */ }
 
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);

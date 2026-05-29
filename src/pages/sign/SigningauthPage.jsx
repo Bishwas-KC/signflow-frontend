@@ -6,15 +6,12 @@ import { AlertTriangle } from 'lucide-react';
 import { getCurrentUser } from '@/utils/helpers';
 
 export default function SigningAuthPage() {
- const { token } = useParams();
- const navigate = useNavigate();
- const [loadError, setLoadError] = useState(null);
+  const { token } = useParams();
+  const navigate = useNavigate();
+  const [loadError, setLoadError] = useState(() => !token ? 'Invalid signing link.' : null);
 
- useEffect(() => {
- if (!token) {
- setLoadError('Invalid signing link.');
- return;
- }
+  useEffect(() => {
+  if (!token) return;
 
  (async () => {
  try {

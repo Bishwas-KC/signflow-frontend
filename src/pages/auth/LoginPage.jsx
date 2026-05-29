@@ -104,8 +104,9 @@ export default function LoginPage() {
  type="email"
  placeholder="you@example.com"
  error={errors.email?.message}
- disabled={!!lockedEmail}
+ readOnly={!!lockedEmail}
  {...register('email')}
+ className={lockedEmail ? 'bg-gray-50' : ''}
  />
  {lockedEmail && (
  <p className="flex items-center gap-1 text-[10px] font-medium text-indigo-500 mt-1">

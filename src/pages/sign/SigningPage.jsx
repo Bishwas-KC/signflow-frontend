@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Document, Page } from 'react-pdf';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
 import { signApi } from '@/api/sign.api';
 import { getCurrentUser } from '@/utils/helpers';
 import { SCREEN_DPI, PDF_PTS } from '@/utils/constants';
@@ -69,8 +67,7 @@ export default function SigningPage() {
 
   const [pdfBlobUrl, setPdfBlobUrl] = useState(null);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageW, setPageW] = useState(794);
-  const [pageH, setPageH] = useState(1123);
+  const [pagesInfo, setPagesInfo] = useState({});
   const [pdfError, setPdfError] = useState(false);
   const [scale, setScale] = useState(1);
   const pdfContainerRef = useRef(null);
@@ -95,7 +92,7 @@ export default function SigningPage() {
     if (!localStorage.getItem('token')) {
       navigate(`/sign/${token}`, { replace: true });
     }
-  }, [token]);
+  }, [token, navigate]);
 
   useEffect(() => {
     (async () => {
@@ -132,7 +129,7 @@ export default function SigningPage() {
         setLoading(false);
       }
     })();
-  }, [token]);
+  }, [token, navigate]);
 
   useEffect(() => {
     const pdfUrl = signingData?.document?.preview_url;
@@ -163,7 +160,8 @@ export default function SigningPage() {
 
   // OTP countdown timer
   useEffect(() => {
-    if (!otpSent) { setOtpCountdown(0); return; }
+    if (!otpSent) { // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOtpCountdown(0); return; }
     setOtpCountdown(60);
     const interval = setInterval(() => {
       setOtpCountdown(prev => {
@@ -172,31 +170,34 @@ export default function SigningPage() {
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [otpKey]);
+  }, [otpKey, otpSent]);
 
   const recalcScale = useCallback(() => {
-    if (pdfContainerRef.current && pageW > 0) {
+    if (pdfContainerRef.current) {
+      const info = pagesInfo[1] || { width: 794 };
       const available = pdfContainerRef.current.clientWidth;
-      setScale(Math.min(1, available / pageW));
+      setScale(Math.min(1, available / info.width));
     }
-  }, [pageW]);
+  }, [pagesInfo]);
 
-  const onPdfLoad = useCallback(async (pdfProxy) => {
+  const onPdfLoad = useCallback((pdfProxy) => {
     setTotalPages(pdfProxy.numPages);
-    try {
-      const page = await pdfProxy.getPage(1);
-      const viewport = page.getViewport({ scale: 1 });
-      const pdfScale = SCREEN_DPI / PDF_PTS;
-      const newW = Math.round(viewport.width * pdfScale);
-      const newH = Math.round(viewport.height * pdfScale);
-      setPageW(newW);
-      setPageH(newH);
-    } catch {}
+  }, []);
+
+  const onPageLoadSuccess = useCallback((page) => {
+    const viewport = page.getViewport({ scale: SCREEN_DPI / PDF_PTS });
+    setPagesInfo(prev => ({
+      ...prev,
+      [page.pageNumber]: {
+        width: Math.round(viewport.width),
+        height: Math.round(viewport.height)
+      }
+    }));
   }, []);
 
   useEffect(() => {
     recalcScale();
-  }, [pageW, recalcScale]);
+  }, [pagesInfo, recalcScale]);
 
   useEffect(() => {
     const onResize = () => recalcScale();
@@ -390,7 +391,7 @@ export default function SigningPage() {
           </div>
 <div ref={pdfContainerRef} className="flex-1 overflow-y-auto bg-gray-50/50 py-4 min-h-0">            {pdfBlobUrl ? (
               <div className="flex justify-center">
-                <div className="relative" style={{ width: pageW * scale, maxWidth: '100%' }}>
+                <div className="relative" style={{ width: (pagesInfo[1]?.width || 794) * scale, maxWidth: '100%' }}>
                   <Document
                     file={pdfBlobUrl}
                     onLoadSuccess={onPdfLoad}
@@ -399,13 +400,14 @@ export default function SigningPage() {
                     {Array.from({ length: totalPages }, (_, i) => {
                       const pageNum = i + 1;
                       const pageFields = fieldsByPage[pageNum] || [];
-
+                      const info = pagesInfo[pageNum] || { width: 794, height: 1123 };
                       return (
-                          <div key={i} className={`relative ${i < totalPages - 1 ? 'mb-4' : ''}`}>
+                          <div key={i} className={`relative ${i < totalPages - 1 ? 'mb-4' : ''}`} style={{ width: info.width * scale, margin: '0 auto' }}>
                             <div className="shadow-lg">
                               <Page
                                 pageNumber={pageNum}
-                                width={pageW * scale}
+                                width={info.width * scale}
+                                onLoadSuccess={onPageLoadSuccess}
                                 renderAnnotationLayer={false}
                                 renderTextLayer={false}
                                 className="bg-white rounded-lg overflow-hidden"

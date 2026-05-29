@@ -46,7 +46,6 @@ export function SigningProgressCard({ doc, signers }) {
         <div className="border-t border-gray-100">
           {signers.map((s, i) => {
             const style = statusStyles[s.status] || statusStyles.pending;
-            const StatusIcon = style.icon;
             const isCurrent = doc.current_signer?.id === s.id;
             return (
               <div

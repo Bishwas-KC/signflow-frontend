@@ -55,7 +55,7 @@ function rectsOverlap(a, b) {
  );
 }
 
-function getFieldRect(field, pageW, pageH) {
+function getFieldRect(field) {
  const pos = field.position || {};
  const w = pos.width ?? field.width ?? SIGNATURE_FIELD.width;
  const h = pos.height ?? field.height ?? SIGNATURE_FIELD.height;
@@ -83,7 +83,7 @@ function findNonOverlappingPosition(pageW, pageH, fieldWidth, fieldHeight, allPa
  if (y + fieldHeight > pageH - 40) continue;
 
  const candidate = { x, y, w: fieldWidth, h: fieldHeight };
- const overlaps = fieldsOnPage.some(f => rectsOverlap(candidate, getFieldRect(f, pageW, pageH)));
+  const overlaps = fieldsOnPage.some(f => rectsOverlap(candidate, getFieldRect(f)));
 
  if (!overlaps) {
  return { x, y };
@@ -679,8 +679,7 @@ export default function DocumentEditorPage() {
 
   const [signerModal, setSignerModal] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
-  const [pageW, setPageW] = useState(DEFAULT_PAGE_W);
-  const [pageH, setPageH] = useState(DEFAULT_PAGE_H);
+  const [pagesInfo, setPagesInfo] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -696,6 +695,8 @@ export default function DocumentEditorPage() {
 
   const doc = data?.data?.document;
 
+  const [minExpiryTime] = useState(() => Date.now() + 60 * 60 * 1000);
+
   const toLocalDatetimeString = (date) => {
     const pad = n => String(n).padStart(2, '0');
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -704,9 +705,10 @@ export default function DocumentEditorPage() {
   const [expiryDate, setExpiryDate] = useState('');
   useEffect(() => {
     if (doc?.expires_at) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExpiryDate(toLocalDatetimeString(new Date(doc.expires_at)));
     }
-  }, [doc?.expires_at]);
+  }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdateExpiry = async (e) => {
     const val = e.target.value;
@@ -727,24 +729,19 @@ export default function DocumentEditorPage() {
  navigate(`/dashboard/documents/${id}`, { replace: true });
  }, [isLoading, doc, id, navigate]);
 
- const onDocumentLoadSuccess = useCallback(async (pdfProxy) => {
- const { numPages } = pdfProxy;
- setTotalPages(numPages);
+ const onDocumentLoadSuccess = useCallback((pdfProxy) => {
+ setTotalPages(pdfProxy.numPages);
+ }, []);
 
- try {
- const page = await pdfProxy.getPage(1);
- const viewport = page.getViewport({ scale: 1 });
- const scale = SCREEN_DPI / PDF_POINTS_INCH;
-
- const detectedW = Math.round(viewport.width * scale);
- const detectedH = Math.round(viewport.height * scale);
-
- setPageW(detectedW);
- setPageH(detectedH);
-
- } catch (e) {
- console.warn('Could not detect PDF page size:', e);
- }
+ const onPageLoadSuccess = useCallback((page) => {
+  const viewport = page.getViewport({ scale: SCREEN_DPI / PDF_POINTS_INCH });
+  setPagesInfo(prev => ({
+    ...prev,
+    [page.pageNumber]: {
+      width: Math.round(viewport.width),
+      height: Math.round(viewport.height)
+    }
+  }));
  }, []);
 
  const handleFieldMoved = useCallback(async (fieldId, pageRelX, pageRelY, pageIdx) => {
@@ -827,7 +824,7 @@ export default function DocumentEditorPage() {
           type="datetime-local"
           value={expiryDate}
           onChange={handleUpdateExpiry}
-          min={toLocalDatetimeString(new Date(Date.now() + 60 * 60 * 1000))}
+          min={toLocalDatetimeString(new Date(minExpiryTime))}
           className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
         />
       </div>
@@ -852,20 +849,23 @@ export default function DocumentEditorPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {signers.map((signer, i) => (
-              <SignerCard
-                key={signer.id}
-                signer={signer}
-                signerIndex={i}
-                documentId={id}
-                totalPages={totalPages}
-                allFields={fields}
-                pageW={pageW}
-                pageH={pageH}
-                onRemove={handleRemoveSigner}
-                onApplied={refetch}
-              />
-            ))}
+            {signers.map((signer, i) => {
+              const info = pagesInfo[1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
+              return (
+                <SignerCard
+                  key={signer.id}
+                  signer={signer}
+                  signerIndex={i}
+                  documentId={id}
+                  totalPages={totalPages}
+                  allFields={fields}
+                  pageW={info.width}
+                  pageH={info.height}
+                  onRemove={handleRemoveSigner}
+                  onApplied={refetch}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -913,7 +913,7 @@ export default function DocumentEditorPage() {
         </div>
 
         <div className="flex-1 overflow-auto flex justify-center py-8 px-4 lg:px-8 bg-gray-100/50 relative">
- <div style={{ width: pageW }} className="animate-fade-in">
+ <div style={{ width: pagesInfo[1]?.width || DEFAULT_PAGE_W }} className="animate-fade-in">
  {/* Canvas toolbar */}
  <div className="flex items-center justify-between px-4 py-2 rounded-lg mb-6 bg-white border border-gray-200 shadow-sm">
  <p className="text-xs text-gray-400">Drag fields to reposition</p>
@@ -931,18 +931,21 @@ export default function DocumentEditorPage() {
  file={pdfUrl}
  onLoadSuccess={onDocumentLoadSuccess}
  loading={
- <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: pageH }}>
+ <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
  <Spinner size="lg" />
  <p className="text-xs text-gray-400 mt-3">Loading PDF...</p>
  </div>
  }
  >
- {Array.from({ length: totalPages }, (_, i) => (
+ {Array.from({ length: totalPages }, (_, i) => {
+   const info = pagesInfo[i + 1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
+   return (
  <div key={i} className="relative mb-4">
  <div className="shadow-lg">
  <Page
  pageNumber={i + 1}
- width={pageW}
+ width={info.width}
+ onLoadSuccess={onPageLoadSuccess}
  renderAnnotationLayer={false}
  renderTextLayer={false}
  className="rounded-lg overflow-hidden bg-white"
@@ -964,8 +967,8 @@ export default function DocumentEditorPage() {
  field={field}
  pageRelX={absX}
  pageRelY={pageRelY}
- pageW={pageW}
- pageH={pageH}
+ pageW={info.width}
+ pageH={info.height}
  signerName={signer?.name ?? 'Signer'}
  signerColor={color}
  allFields={fields.filter(f => Number(f.page) === i + 1)}
@@ -984,10 +987,11 @@ export default function DocumentEditorPage() {
  </div>
  )}
  </div>
- ))}
+   );
+ })}
  </Document>
  ) : (
- <div className="flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: pageH }}>
+ <div className="flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
  <p className="text-xs text-gray-400">No preview available</p>
  </div>
   )}

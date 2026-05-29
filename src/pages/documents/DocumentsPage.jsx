@@ -333,15 +333,19 @@ export default function DocumentsPage() {
   const [perPage, setPerPage] = useState(10);
   const [view, setView] = useState('list');
 
-  useEffect(() => { setPage(1); }, [perPage]);
+  const handlePerPageChange = (newPerPage) => {
+    setPerPage(newPerPage);
+    setPage(1);
+  };
 
   useEffect(() => {
-    // Read location.state once on mount to auto-open upload modal from dashboard
     if (location.state?.openNewModal) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setNewModal(true);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ['documents', { search, status, role, page, perPage }],
@@ -620,7 +624,7 @@ export default function DocumentsPage() {
             </div>
           )}
 
-          <Pagination meta={meta} page={page} onPageChange={setPage} perPage={perPage} onPerPageChange={setPerPage} />
+          <Pagination meta={meta} page={page} onPageChange={setPage} perPage={perPage} onPerPageChange={handlePerPageChange} />
         </div>
       )}
 

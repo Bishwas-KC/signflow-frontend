@@ -31,7 +31,7 @@ export function AuditLogTimeline({ logs = [] }) {
     <div className="absolute left-7 top-4 bottom-4 w-px bg-gray-100" />
 
     <div className="space-y-0">
-    {logList.map((log, idx) => {
+    {logList.map((log) => {
     const config = eventConfig[log.event] || {
     icon: User, color: 'bg-gray-100 text-gray-500', label: log.event,
     };

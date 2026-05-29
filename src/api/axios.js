@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-  timeout: 30000,
+  timeout: 15000,
 });
 
 let isRefreshing = false;
@@ -55,6 +55,10 @@ api.interceptors.response.use(
 
     // ── 401: Attempt token refresh before giving up ────────────────
     if (status === 401 && !originalRequest?._retry) {
+      // Login, register, and refresh are public/internal endpoints — 401 means wrong credentials or revoked token, not expired
+      if (originalRequest?.url?.includes('/auth/login') || originalRequest?.url?.includes('/auth/register') || originalRequest?.url?.includes('/auth/refresh')) {
+        return Promise.reject(error);
+      }
       const token = localStorage.getItem('token');
       if (!token) {
         clearAuthAndRedirect();
