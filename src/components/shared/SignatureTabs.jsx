@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
 import { SIGNATURE_FONTS } from '@/utils/constants';
+import { classNames } from '@/utils/helpers';
 import {
   PenLine, RotateCcw, CheckCircle, Trash2, Upload, ChevronDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-export function DrawTab({ onSignatureReady, signatureData, saveToAccount, setSaveToAccount }) {
+export function DrawTab({ onSignatureReady, signatureData, saveToAccount, setSaveToAccount, maxReached = false }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const lastPt = useRef(null);
@@ -97,9 +98,12 @@ export function DrawTab({ onSignatureReady, signatureData, saveToAccount, setSav
               type="checkbox"
               checked={saveToAccount}
               onChange={e => setSaveToAccount(e.target.checked)}
+              disabled={maxReached}
               className="w-3.5 h-3.5 accent-indigo-500"
             />
-            <span className="text-xs text-gray-500">Save for future</span>
+            <span className={classNames('text-xs', maxReached ? 'text-gray-400' : 'text-gray-500')}>
+              {maxReached ? 'Maximum 6 signatures' : 'Save for future'}
+            </span>
           </label>
           {signatureData && (
             <div className="flex items-center gap-1.5 text-emerald-600">
@@ -118,7 +122,7 @@ export function DrawTab({ onSignatureReady, signatureData, saveToAccount, setSav
   );
 }
 
-export function TypeTab({ signerName, onSignatureReady, signatureData, saveToAccount, setSaveToAccount }) {
+export function TypeTab({ signerName, onSignatureReady, signatureData, saveToAccount, setSaveToAccount, maxReached = false }) {
   const [text, setText] = useState(signerName || '');
   const [fontIdx, setFontIdx] = useState(0);
   const canvasRef = useRef(null);
@@ -210,9 +214,12 @@ export function TypeTab({ signerName, onSignatureReady, signatureData, saveToAcc
               type="checkbox"
               checked={saveToAccount}
               onChange={e => setSaveToAccount(e.target.checked)}
+              disabled={maxReached}
               className="w-3.5 h-3.5 accent-indigo-500"
             />
-            <span className="text-xs text-gray-500">Save for future</span>
+            <span className={classNames('text-xs', maxReached ? 'text-gray-400' : 'text-gray-500')}>
+              {maxReached ? 'Maximum 6 signatures' : 'Save for future'}
+            </span>
           </label>
           {signatureData && (
             <div className="flex items-center gap-1.5 text-emerald-600">
@@ -231,7 +238,7 @@ export function TypeTab({ signerName, onSignatureReady, signatureData, saveToAcc
   );
 }
 
-export function UploadTab({ savedSignatures = [], onSignatureReady, signatureData, saveToAccount, setSaveToAccount }) {
+export function UploadTab({ savedSignatures = [], onSignatureReady, signatureData, saveToAccount, setSaveToAccount, maxReached = false }) {
   const [preview, setPreview] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const inputRef = useRef(null);
@@ -350,9 +357,12 @@ export function UploadTab({ savedSignatures = [], onSignatureReady, signatureDat
               type="checkbox"
               checked={saveToAccount}
               onChange={e => setSaveToAccount(e.target.checked)}
+              disabled={maxReached}
               className="w-3.5 h-3.5 accent-indigo-500"
             />
-            <span className="text-xs text-gray-500">Save for future</span>
+            <span className={classNames('text-xs', maxReached ? 'text-gray-400' : 'text-gray-500')}>
+              {maxReached ? 'Maximum 6 signatures' : 'Save for future'}
+            </span>
           </label>
           {signatureData && (
             <div className="flex items-center gap-1.5 text-emerald-600">

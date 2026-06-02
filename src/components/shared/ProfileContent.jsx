@@ -103,7 +103,7 @@ export function ProfileContent() {
   };
 
   const handleSaveSignature = async () => {
-    if (!signatureData) return;
+    if (!signatureData || savingSignature) return;
     setSavingSignature(true);
     try {
       await signApi.saveNewSignature(signatureData);
@@ -366,12 +366,15 @@ export function ProfileContent() {
             </div>
 
             {/* Save Button */}
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex flex-col items-end gap-1.5">
+              {savedSignatures.length >= 6 && (
+                <p className="text-xs text-amber-600">Maximum 6 signatures allowed.</p>
+              )}
               <Button
                 type="button"
                 size="sm"
                 loading={savingSignature}
-                disabled={!signatureData}
+                disabled={!signatureData || savedSignatures.length >= 6}
                 onClick={handleSaveSignature}
               >
                 <Bookmark size={14} /> Save to Account

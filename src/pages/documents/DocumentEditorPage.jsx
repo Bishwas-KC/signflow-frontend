@@ -17,7 +17,7 @@ import { getInitials, classNames } from '@/utils/helpers';
 import {
   ArrowLeft,
   UserPlus,
-  CheckCircle,
+
   AlertCircle,
   Send,
   X,
@@ -29,6 +29,10 @@ import {
   Clock,
   Menu,
 } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import { enUS } from 'date-fns/locale';
+import 'react-datepicker/dist/react-datepicker.css';
+import './datepicker.css';
 import toast from 'react-hot-toast';
 
 const DEFAULT_PAGE_W = 794;
@@ -494,33 +498,48 @@ function SignerCard({ signer, signerIndex, documentId, totalPages, allFields, pa
 
 // ─── AddSignerModal ────────────────────────────────────────────────────────────
 function AddSignerModal({ open, onClose, documentId, onAdded }) {
- const [tab, setTab] = useState('manual');
- const [name, setName] = useState('');
- const [email, setEmail] = useState('');
- const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState('manual');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveContact, setSaveContact] = useState(false);
 
- const { data: contactsData, isLoading: contactsLoading } = useQuery({
- queryKey: ['contacts-picker'],
- queryFn: () => contactApi.list({ per_page: 100 }),
- enabled: open && tab === 'contacts',
- });
+  const { data: contactsData, isLoading: contactsLoading } = useQuery({
+  queryKey: ['contacts-picker'],
+  queryFn: () => contactApi.list({ per_page: 100 }),
+  enabled: open && tab === 'contacts',
+  });
 
- const reset = () => { setName(''); setEmail(''); };
+  const reset = () => { setName(''); setEmail(''); setSaveContact(false); };
 
- const add = async (payload) => {
- setSaving(true);
- try {
- await documentApi.addSigner(documentId, payload);
+  const add = async (payload) => {
+  setSaving(true);
+  try {
+  await documentApi.addSigner(documentId, payload);
+  if (saveContact) {
+  try {
+  await contactApi.create({ full_name: payload.name, email: payload.email, sign_role: 'signer' });
+  toast.success(`${payload.name} saved to contacts.`);
+  } catch (contactErr) {
+  const code = contactErr?.response?.data?.error?.code;
+  const msg = contactErr?.response?.data?.error?.message || '';
+  if (code === 'CONTACT_EMAIL_EXISTS' || msg.includes('already exists')) {
+  toast(`${payload.name} is already in your contacts.`, { icon: 'ℹ️' });
+  } else if (msg.includes('cannot add yourself')) {
+  toast('You cannot add yourself as a contact.', { icon: 'ℹ️' });
+  }
+  }
+  }
   toast.success(`${payload.name} added.`);
- onAdded();
- onClose();
- reset();
- } catch (err) {
+  onAdded();
+  onClose();
+  reset();
+  } catch (err) {
   toast.error(err?.response?.data?.error?.message || 'Failed to add signer.');
- } finally {
- setSaving(false);
- }
- };
+  } finally {
+  setSaving(false);
+  }
+  };
 
  return (
  <Modal open={open} onClose={() => { onClose(); reset(); }} title="Add Signer" size="sm">
@@ -548,8 +567,17 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
  {tab === 'manual' ? (
  <div className="space-y-4">
  <Input label="Name" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Doe" autoFocus />
- <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
- <Button className="w-full" loading={saving} disabled={!name.trim() || !email.trim()} onClick={() => add({ name: name.trim(), email: email.trim() })}>
+  <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
+  <label className="flex items-center gap-2 cursor-pointer select-none">
+    <input
+      type="checkbox"
+      checked={saveContact}
+      onChange={e => setSaveContact(e.target.checked)}
+      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+    />
+    <span className="text-xs text-gray-600">Save as contact</span>
+  </label>
+  <Button className="w-full" loading={saving} disabled={!name.trim() || !email.trim()} onClick={() => add({ name: name.trim(), email: email.trim() })}>
  <Plus size={14} /> Add Signer
  </Button>
  </div>
@@ -589,39 +617,40 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
 // ─── SendPanel ─────────────────────────────────────────────────────────────────
 function SendPanel({ documentId, onSent }) {
   const [result, setResult] = useState(null);
-  const [validating, setValidating] = useState(false);
-  const [sending, setSending] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [expiredError, setExpiredError] = useState(false);
 
-  const runValidate = async () => {
-    setValidating(true);
+  const handleSend = async () => {
+    setIsProcessing(true);
     setExpiredError(false);
+    setResult(null);
+
     try {
       const res = await documentApi.validate(documentId);
-      setResult(res.data);
+      const validation = res.data;
+
+      if (!validation.valid) {
+        setResult(validation);
+        setIsProcessing(false);
+        return;
+      }
+
+      try {
+        await documentApi.send(documentId);
+        toast.success('Document sent.');
+        onSent();
+      } catch (err) {
+        const code = err?.response?.data?.error?.code;
+        if (code === 'DOCUMENT_EXPIRED') {
+          setExpiredError(true);
+        } else {
+          toast.error(err?.response?.data?.error?.message || 'Failed to send.');
+        }
+      }
     } catch {
       toast.error('Validation failed.');
     } finally {
-      setValidating(false);
-    }
-  };
-
-  const runSend = async () => {
-    setSending(true);
-    setExpiredError(false);
-    try {
-      await documentApi.send(documentId);
-      toast.success('Document sent.');
-      onSent();
-    } catch (err) {
-      const code = err?.response?.data?.error?.code;
-      if (code === 'DOCUMENT_EXPIRED') {
-        setExpiredError(true);
-      } else {
-        toast.error(err?.response?.data?.error?.message || 'Failed to send.');
-      }
-    } finally {
-      setSending(false);
+      setIsProcessing(false);
     }
   };
 
@@ -632,41 +661,28 @@ function SendPanel({ documentId, onSent }) {
           <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-medium">Document has expired</p>
-            <p className="text-[11px] opacity-80 mt-1">The expiry date has passed. Update the expiry date in the document settings, then validate and send.</p>
+            <p className="text-[11px] opacity-80 mt-1">The expiry date has passed. Please update it in the document settings above, then try again.</p>
           </div>
         </div>
       )}
       {result && !expiredError && (
         <div className={classNames(
           'rounded-lg p-3 text-xs flex items-start gap-2',
-          result.valid
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-            : 'bg-red-50 text-red-700 border border-red-100'
+          'bg-red-50 text-red-700 border border-red-100'
         )}>
-          {result.valid ? <CheckCircle size={14} className="mt-0.5 flex-shrink-0" /> : <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />}
+          <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
           <div>
-            {result.valid ? (
-              <p className="font-medium">Ready to send</p>
-            ) : (
-              <div>
-                <p className="font-medium mb-1">Issues found</p>
-                <ul className="space-y-0.5 list-disc pl-4 text-[11px] opacity-80">
-                  {result.errors.map((e, i) => <li key={i}>{e}</li>)}
-                </ul>
-              </div>
-            )}
+            <p className="font-medium mb-1">Issues found</p>
+            <ul className="space-y-0.5 list-disc pl-4 text-[11px] opacity-80">
+              {result.errors.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
           </div>
         </div>
       )}
 
-      <div className="flex gap-2">
-        <Button variant="secondary" className="flex-1" size="sm" loading={validating} onClick={runValidate}>
-          <CheckCircle size={14} /> Validate
-        </Button>
-        <Button className="flex-1" size="sm" disabled={!result?.valid || expiredError} loading={sending} onClick={runSend}>
-          <Send size={14} /> Send
-        </Button>
-      </div>
+      <Button className="w-full" size="sm" loading={isProcessing} disabled={expiredError} onClick={handleSend}>
+        <Send size={14} /> Send
+      </Button>
     </div>
   );
 }
@@ -697,32 +713,25 @@ export default function DocumentEditorPage() {
 
   const [minExpiryTime] = useState(() => Date.now() + 60 * 60 * 1000);
 
-  const toLocalDatetimeString = (date) => {
-    const pad = n => String(n).padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  };
-
-  const [expiryDate, setExpiryDate] = useState('');
+  const [expiryDateTime, setExpiryDateTime] = useState(null);
   useEffect(() => {
     if (doc?.expires_at) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setExpiryDate(toLocalDatetimeString(new Date(doc.expires_at)));
+      setExpiryDateTime(new Date(doc.expires_at));
     }
   }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleUpdateExpiry = async (e) => {
-    const val = e.target.value;
-    const prev = expiryDate;
-    setExpiryDate(val);
+  const handleExpiryChange = useCallback(async (date) => {
+    setExpiryDateTime(date);
+    if (!date) return;
     try {
-      const saveVal = val ? new Date(val + ':00').toISOString().slice(0, 19).replace('T', ' ') : null;
+      const saveVal = date.toISOString().slice(0, 19).replace('T', ' ');
       await documentApi.update(id, { expires_at: saveVal });
       refetch();
     } catch (err) {
-      setExpiryDate(prev);
+      refetch();
       toast.error(err?.response?.data?.error?.message || 'Failed to update expiry date.');
     }
-  };
+  }, [id, refetch]);
 
  useEffect(() => {
  if (!isLoading && doc && !doc.is_editable)
@@ -820,13 +829,21 @@ export default function DocumentEditorPage() {
         <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1.5">
           <Clock size={12} /> Expiry Date
         </label>
-        <input
-          type="datetime-local"
-          value={expiryDate}
-          onChange={handleUpdateExpiry}
-          min={toLocalDatetimeString(new Date(minExpiryTime))}
-          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
-        />
+          <DatePicker
+            selected={expiryDateTime}
+            onChange={handleExpiryChange}
+            showTimeSelect
+            timeFormat="h:mm aa"
+            timeIntervals={30}
+            dateFormat="MMM d, yyyy h:mm aa"
+            minDate={new Date()}
+            placeholderText="Set expiry date & time"
+            locale={enUS}
+            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
+            wrapperClassName="w-full"
+            calendarClassName="shadow-xl border-gray-200"
+            popperClassName="z-50"
+          />
       </div>
 
       {/* Signers section - takes most of the space */}
@@ -899,11 +916,6 @@ export default function DocumentEditorPage() {
 
       {/* Canvas */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile banner */}
-        <div className="lg:hidden px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 font-medium text-center">
-          For best experience, use a tablet or desktop.
-        </div>
-
         {/* Mobile toggle bar */}
         <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-200 bg-white">
           <button onClick={() => setSidebarOpen(true)} className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-all">
@@ -912,8 +924,8 @@ export default function DocumentEditorPage() {
           <span className="text-sm font-semibold text-gray-900 truncate">{doc.title}</span>
         </div>
 
-        <div className="flex-1 overflow-auto flex justify-center py-8 px-4 lg:px-8 bg-gray-100/50 relative">
- <div style={{ width: pagesInfo[1]?.width || DEFAULT_PAGE_W }} className="animate-fade-in">
+        <div className="flex-1 overflow-y-auto flex justify-center py-8 px-4 lg:px-8 bg-gray-100/50 relative">
+  <div style={{ width: pagesInfo[1]?.width || DEFAULT_PAGE_W, maxWidth: '100%', overflowX: 'auto' }} className="animate-fade-in">
  {/* Canvas toolbar */}
  <div className="flex items-center justify-between px-4 py-2 rounded-lg mb-6 bg-white border border-gray-200 shadow-sm">
  <p className="text-xs text-gray-400">Drag fields to reposition</p>

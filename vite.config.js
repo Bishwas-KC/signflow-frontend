@@ -27,6 +27,7 @@ export default defineConfig({
           pdf: ['react-pdf', 'pdfjs-dist'],
           charts: ['recharts'],
           signature: ['react-signature-canvas', 'react-draggable'],
+          datepicker: ['react-datepicker', 'date-fns'],
         },
       },
     },

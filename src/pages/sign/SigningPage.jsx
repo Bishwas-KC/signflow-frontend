@@ -217,12 +217,20 @@ export default function SigningPage() {
 
   const handleSign = async () => {
     if (!signatureData) { toast.error('Please create your signature first.'); return; }
+    if (submitting) return;
     setSubmitting(true);
     try {
       if (saveToAccount) {
-        const res = await signApi.saveNewSignature(signatureData).catch(() => {});
-        if (res?.data) {
-          setSavedSignatures(prev => [{ ...res.data, data_uri: res.data.data_uri || signatureData }, ...prev]);
+        try {
+          const res = await signApi.saveNewSignature(signatureData);
+          if (res?.data) {
+            setSavedSignatures(prev => [{ ...res.data, data_uri: res.data.data_uri || signatureData }, ...prev]);
+          }
+        } catch (err) {
+          const code = err?.response?.data?.error?.code;
+          if (code === 'MAX_SIGNATURES_REACHED') {
+            toast('You already have 6 saved signatures. Signature not saved.', { icon: 'ℹ️' });
+          }
         }
       }
       await signApi.submit(token, signatureData);
@@ -362,6 +370,8 @@ export default function SigningPage() {
     { key: 'draw', label: 'Draw', icon: PenLine },
     { key: 'type', label: 'Type', icon: Type },
   ];
+
+  const maxReached = savedSignatures.length >= 6;
 
   return (
     <div className="min-h-screen min-h-dynamic flex flex-col bg-gray-50">
@@ -548,9 +558,9 @@ export default function SigningPage() {
 
             {/* Tab Content */}
             <div role="tabpanel" className="p-3 min-h-[200px] md:min-h-[300px]">
-              {sigTab === 'draw' && <DrawTab onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} />}
-              {sigTab === 'type' && <TypeTab signerName={signer.name} onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} />}
-              {sigTab === 'upload' && <UploadTab savedSignatures={savedSignatures} onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} />}
+              {sigTab === 'draw' && <DrawTab onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} maxReached={maxReached} />}
+              {sigTab === 'type' && <TypeTab signerName={signer.name} onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} maxReached={maxReached} />}
+              {sigTab === 'upload' && <UploadTab savedSignatures={savedSignatures} onSignatureReady={setSignatureData} saveToAccount={saveToAccount} setSaveToAccount={setSaveToAccount} signatureData={signatureData} maxReached={maxReached} />}
             </div>
           </div>
 
