@@ -5,16 +5,14 @@ import { STATUS_LABELS, STATUS_COLORS } from '@/utils/constants';
 import { formatDate, formatDateTime } from '@/utils/helpers';
 import { classNames } from '@/utils/helpers';
 import { ArrowLeft, Download, Edit3, XCircle, Trash2, Clock, Calendar, User, Building, Shield } from 'lucide-react';
-import api from '@/api/axios';
+import { documentApi } from '@/api/document.api';
 import toast from 'react-hot-toast';
 
 export function DocumentHeader({ doc, onCancel, onDelete }) {
   const handleDownload = async () => {
     try {
-      const res = await api.get(`/documents/${doc.id}/download`, { responseType: 'blob' });
-      const disposition = res.headers['content-disposition'];
-      const filename = disposition?.match(/filename="?(.+?)"?$/)?.[1] || 'document.pdf';
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const { data, filename } = await documentApi.download(doc.id);
+      const url = window.URL.createObjectURL(new Blob([data]));
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;

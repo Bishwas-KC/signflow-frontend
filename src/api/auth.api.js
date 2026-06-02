@@ -25,11 +25,8 @@ export const authApi = {
   changePassword: (data) =>
   api.post('/auth/change-password', data).then(r => r.data),
 
- googleRedirect: () =>
- api.get('/auth/google/redirect').then(r => r.data),
-
- googleCallback: (code) =>
- api.get(`/auth/google/callback?code=${encodeURIComponent(code)}`).then(r => r.data),
+  firebaseLogin: (idToken) =>
+  api.post('/auth/firebase/google', { id_token: idToken }).then(r => r.data),
 
   verifyEmail: (userId, token) =>
   api.post('/auth/verify-email', { user_id: userId, token }).then(r => r.data),

@@ -13,12 +13,12 @@ export const signApi = {
  // signatureData can be:
  // - base64 data URI string (for draw/type) → method: 'draw'
  // - File object (for upload) → multipart/form-data with method: 'upload'
-  submit: (token, signatureData) => {
-    return api.post(`/sign/${token}/submit`, {
-      method: 'draw',
-      signature_data: signatureData,
-    });
-  },
+   submit: (token, signatureData, method = 'draw') => {
+     return api.post(`/sign/${token}/submit`, {
+       method,
+       signature_data: signatureData,
+     }).then(r => r.data);
+   },
 
  // Step 2: Verify OTP → completes the signature
  verifyOtp: (token, otp) =>

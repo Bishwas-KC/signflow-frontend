@@ -27,7 +27,6 @@ import {
   ChevronUp,
   GripVertical,
   Clock,
-  Menu,
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { enUS } from 'date-fns/locale';
@@ -152,51 +151,54 @@ function parsePageInput(input, totalPages) {
 }
 
 // ─── FieldOverlay ──────────────────────────────────────────────────────────────
-function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, signerColor, allFields, onRemove, onMoved }) {
- const nodeRef = useRef(null);
- const [key, setKey] = useState(0);
- const w = field.position?.width ?? field.width ?? SIGNATURE_FIELD.width;
- const h = field.position?.height ?? field.height ?? SIGNATURE_FIELD.height;
- const startX = pageRelX;
- const startY = pageRelY;
- const startPos = { x: startX, y: startY };
+function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, signerColor, allFields, onRemove, onMoved, scale = 1 }) {
+  const nodeRef = useRef(null);
+  const [key, setKey] = useState(0);
+  const w = field.position?.width ?? field.width ?? SIGNATURE_FIELD.width;
+  const h = field.position?.height ?? field.height ?? SIGNATURE_FIELD.height;
+  const startX = pageRelX * scale;
+  const startY = pageRelY * scale;
+  const startPos = { x: startX, y: startY };
 
- const handleStop = (_, d) => {
- let newX = Math.round(d.x);
- let newY = Math.round(d.y);
+  const handleStop = (_, d) => {
+  let newX = Math.round(d.x / scale);
+  let newY = Math.round(d.y / scale);
 
- newX = Math.max(0, Math.min(newX, pageW - w));
- newY = Math.max(0, Math.min(newY, pageH - h));
+  newX = Math.max(0, Math.min(newX, pageW - w));
+  newY = Math.max(0, Math.min(newY, pageH - h));
 
- if (wouldOverlap(newX, newY, field.id, allFields, w, h)) {
- setKey(k => k + 1);
-  toast.error('Cannot place here — overlaps another signature field.');
- return;
- }
+  if (wouldOverlap(newX, newY, field.id, allFields, w, h)) {
+  setKey(k => k + 1);
+   toast.error('Cannot place here — overlaps another signature field.');
+  return;
+  }
 
- onMoved(field.id, newX, newY);
- };
+  onMoved(field.id, newX, newY);
+  };
 
- return (
-  <Draggable
-  nodeRef={nodeRef}
-  defaultPosition={startPos}
-  bounds={{ left: 0, top: 0, right: pageW - w, bottom: pageH - h }}
-  key={key}
-  onStop={handleStop}
+  const scaledW = Math.round(w * scale);
+  const scaledH = Math.round(h * scale);
+
+  return (
+   <Draggable
+   nodeRef={nodeRef}
+   defaultPosition={startPos}
+   bounds={{ left: 0, top: 0, right: (pageW - w) * scale, bottom: (pageH - h) * scale }}
+   key={key}
+   onStop={handleStop}
+   >
+  <div
+  ref={nodeRef}
+  className="absolute top-0 left-0 group cursor-grab active:cursor-grabbing select-none"
+  style={{ width: scaledW, zIndex: 50 }}
   >
- <div
- ref={nodeRef}
- className="absolute top-0 left-0 group cursor-grab active:cursor-grabbing select-none"
- style={{ width: w, zIndex: 50 }}
- >
- <div
- className={classNames(
- 'w-full flex items-center justify-center gap-2 text-xs font-semibold rounded-lg border-2 transition-all hover:shadow-md',
- signerColor.bg, signerColor.text, signerColor.border
- )}
- style={{ height: h }}
- >
+  <div
+  className={classNames(
+  'w-full flex items-center justify-center gap-2 text-xs font-semibold rounded-lg border-2 transition-all hover:shadow-md',
+  signerColor.bg, signerColor.text, signerColor.border
+  )}
+  style={{ height: scaledH }}
+  >
  <GripVertical size={12} className="opacity-40 flex-shrink-0" />
  <span className="truncate">Sign — P{field.page}</span>
  </div>
@@ -696,12 +698,26 @@ export default function DocumentEditorPage() {
   const [signerModal, setSignerModal] = useState(false);
   const [totalPages, setTotalPages] = useState(1);
   const [pagesInfo, setPagesInfo] = useState({});
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pdfContainerRef = useRef(null);
+  const [scale, setScale] = useState(1);
+
+  const recalcScale = useCallback(() => {
+    if (pdfContainerRef.current) {
+      const info = pagesInfo[1] || { width: DEFAULT_PAGE_W };
+      const available = pdfContainerRef.current.clientWidth;
+      setScale(Math.min(1, available / info.width));
+    }
+  }, [pagesInfo]);
 
   useEffect(() => {
-    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [sidebarOpen]);
+    recalcScale();
+  }, [pagesInfo, recalcScale]);
+
+  useEffect(() => {
+    const onResize = () => recalcScale();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [recalcScale]);
 
 
   const { data, isLoading, refetch } = useQuery({
@@ -804,215 +820,293 @@ export default function DocumentEditorPage() {
   const fields = doc.fields || [];
   const pdfUrl = doc.file?.preview_url ?? doc.file?.original_url;
 
-  const sidebarContent = (
-    <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100">
+  // ── Desktop sidebar (shared) ────────────────────────────────────────────────
+  const sidebarHeader = (
+    <div className="px-5 py-4 border-b border-gray-100">
+      <button
+        onClick={() => navigate(`/dashboard/documents/${id}`)}
+        className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 mb-3 group"
+      >
+        <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
+        Back
+      </button>
+      <h1 className="text-base font-semibold text-gray-900 truncate">{doc.title}</h1>
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-xs text-gray-400">{totalPages} pages</span>
+        <span className="text-gray-300">·</span>
+        <Badge variant="indigo" size="xs">{doc.signing_mode}</Badge>
+        <span className="text-xs text-gray-400">{doc.status_label}</span>
+      </div>
+    </div>
+  );
+
+  const expirySection = (
+    <div className="px-5 py-3 border-b border-gray-100">
+      <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1.5">
+        <Clock size={12} /> Expiry Date
+      </label>
+      <DatePicker
+        selected={expiryDateTime}
+        onChange={handleExpiryChange}
+        showTimeSelect
+        timeFormat="h:mm aa"
+        timeIntervals={30}
+        dateFormat="MMM d, yyyy h:mm aa"
+        minDate={new Date()}
+        placeholderText="Set expiry date & time"
+        locale={enUS}
+        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
+        wrapperClassName="w-full"
+        calendarClassName="shadow-xl border-gray-200"
+        popperClassName="z-50"
+      />
+    </div>
+  );
+
+  const signersSection = (
+    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-medium text-gray-500">Signers</p>
         <button
-          onClick={() => navigate(`/dashboard/documents/${id}`)}
-          className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 mb-3 group"
+          onClick={() => setSignerModal(true)}
+          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
         >
-          <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
-          Back
+          <UserPlus size={13} /> Add
         </button>
-        <h1 className="text-base font-semibold text-gray-900 truncate">{doc.title}</h1>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs text-gray-400">{totalPages} pages</span>
-          <span className="text-gray-300">·</span>
-          <Badge variant="indigo" size="xs">{doc.signing_mode}</Badge>
-          <span className="text-xs text-gray-400">{doc.status_label}</span>
-        </div>
       </div>
 
-      {/* Expiry date editor */}
-      <div className="px-5 py-3 border-b border-gray-100">
-        <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1.5">
-          <Clock size={12} /> Expiry Date
-        </label>
-          <DatePicker
-            selected={expiryDateTime}
-            onChange={handleExpiryChange}
-            showTimeSelect
-            timeFormat="h:mm aa"
-            timeIntervals={30}
-            dateFormat="MMM d, yyyy h:mm aa"
-            minDate={new Date()}
-            placeholderText="Set expiry date & time"
-            locale={enUS}
-            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
-            wrapperClassName="w-full"
-            calendarClassName="shadow-xl border-gray-200"
-            popperClassName="z-50"
-          />
-      </div>
-
-      {/* Signers section - takes most of the space */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-medium text-gray-500">Signers</p>
-          <button
-            onClick={() => setSignerModal(true)}
-            className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
-          >
-            <UserPlus size={13} /> Add
-          </button>
+      {signers.length === 0 ? (
+        <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+          <UserPlus size={24} className="mx-auto text-gray-300 mb-2" />
+          <p className="text-xs text-gray-400 mb-3">Add a signer to start</p>
+          <Button size="sm" variant="secondary" onClick={() => setSignerModal(true)}>Add Signer</Button>
         </div>
+      ) : (
+        <div className="space-y-2">
+          {signers.map((signer, i) => {
+            const info = pagesInfo[1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
+            return (
+              <SignerCard
+                key={signer.id}
+                signer={signer}
+                signerIndex={i}
+                documentId={id}
+                totalPages={totalPages}
+                allFields={fields}
+                pageW={info.width}
+                pageH={info.height}
+                onRemove={handleRemoveSigner}
+                onApplied={refetch}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
-        {signers.length === 0 ? (
-          <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-            <UserPlus size={24} className="mx-auto text-gray-300 mb-2" />
-            <p className="text-xs text-gray-400 mb-3">Add a signer to start</p>
-            <Button size="sm" variant="secondary" onClick={() => setSignerModal(true)}>Add Signer</Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {signers.map((signer, i) => {
-              const info = pagesInfo[1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
-              return (
-                <SignerCard
-                  key={signer.id}
-                  signer={signer}
-                  signerIndex={i}
-                  documentId={id}
-                  totalPages={totalPages}
-                  allFields={fields}
-                  pageW={info.width}
-                  pageH={info.height}
-                  onRemove={handleRemoveSigner}
-                  onApplied={refetch}
-                />
-              );
-            })}
-          </div>
+  const sendSection = (
+    <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+      <SendPanel documentId={id} onSent={() => {
+        queryClient.invalidateQueries({ queryKey: ['documents'] });
+        navigate(`/dashboard/documents/${id}`);
+      }} />
+    </div>
+  );
+
+  // ── PDF canvas with fields ──────────────────────────────────────────────────
+  const pdfCanvas = (
+    <div ref={pdfContainerRef} className="w-full max-w-[794px]">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between px-4 py-2 rounded-lg mb-4 bg-white border border-gray-200 shadow-sm">
+        <p className="hidden sm:block text-xs text-gray-400">Drag fields to reposition</p>
+        {fields.length > 0 && (
+          <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
+            {fields.length} field{fields.length > 1 ? 's' : ''} placed
+          </span>
         )}
       </div>
 
-      {/* Send panel - compact at bottom */}
-      <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-        <SendPanel documentId={id} onSent={() => {
-          queryClient.invalidateQueries({ queryKey: ['documents'] });
-          navigate(`/dashboard/documents/${id}`);
-        }} />
+      {/* PDF Pages */}
+      <div className="relative">
+        {pdfUrl ? (
+          <Document
+            file={pdfUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            loading={
+              <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
+                <Spinner size="lg" />
+                <p className="text-xs text-gray-400 mt-3">Loading PDF...</p>
+              </div>
+            }
+          >
+            {Array.from({ length: totalPages }, (_, i) => {
+              const info = pagesInfo[i + 1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
+              const pageW = Math.round(info.width * scale);
+              return (
+                <div key={i} className="relative mb-4">
+                  <div className="shadow-lg">
+                    <Page
+                      pageNumber={i + 1}
+                      width={pageW}
+                      onLoadSuccess={onPageLoadSuccess}
+                      renderAnnotationLayer={false}
+                      renderTextLayer={false}
+                      className="rounded-lg overflow-hidden bg-white"
+                    />
+                  </div>
+
+                  {/* Field overlays */}
+                  {fields.filter(f => Number(f.page) === i + 1).map(field => {
+                    const signerIdx = signers.findIndex(s => s.id === field.document_signer_id);
+                    const color = SIGNER_COLORS[Math.max(0, signerIdx) % SIGNER_COLORS.length];
+                    const signer = signers[signerIdx];
+                    const pos = field.position || {};
+                    const absX = pos.x ?? field.pos_x ?? 0;
+                    const pageRelY = pos.y ?? field.pos_y ?? 0;
+
+                    return (
+                      <FieldOverlay
+                        key={field.id}
+                        field={field}
+                        pageRelX={absX}
+                        pageRelY={pageRelY}
+                        scale={scale}
+                        pageW={info.width}
+                        pageH={info.height}
+                        signerName={signer?.name ?? 'Signer'}
+                        signerColor={color}
+                        allFields={fields.filter(f => Number(f.page) === i + 1)}
+                        onRemove={handleRemoveField}
+                        onMoved={(fId, x, y) => handleFieldMoved(fId, x, y, i)}
+                      />
+                    );
+                  })}
+
+                  {/* Page separator */}
+                  {i < totalPages - 1 && (
+                    <div className="flex items-center justify-center py-2">
+                      <span className="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-200">
+                        Page {i + 2}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Document>
+        ) : (
+          <div className="flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
+            <p className="text-xs text-gray-400">No preview available</p>
+          </div>
+        )}
       </div>
     </div>
   );
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex w-80 flex-shrink-0 flex-col overflow-hidden bg-white border-r border-gray-200 z-20">
-        {sidebarContent}
+      {/* ── Desktop sidebar (md+) ── */}
+      <div className="hidden md:flex w-80 flex-shrink-0 flex-col overflow-hidden bg-white border-r border-gray-200 z-20">
+        <div className="flex flex-col h-full bg-white">
+          {sidebarHeader}
+          {expirySection}
+          {signersSection}
+          {sendSection}
+        </div>
       </div>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-fade-in" onClick={() => setSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 h-full z-50 w-80 animate-slide-right shadow-xl">
-            {sidebarContent}
+      {/* ── Main area ── */}
+      <div className="flex-1 min-w-0 overflow-y-auto md:overflow-hidden md:flex md:flex-col">
+        {/* Mobile header */}
+        <div className="md:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-2.5 flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/dashboard/documents/${id}`)}
+            className="p-2 -ml-2 rounded-lg text-gray-400 hover:bg-gray-100 active:bg-gray-200 transition-colors"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{doc.title}</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-gray-400">{totalPages} pages</span>
+              <Badge variant="indigo" size="xs">{doc.signing_mode}</Badge>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* Canvas */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile toggle bar */}
-        <div className="lg:hidden flex items-center gap-2 px-4 py-2 border-b border-gray-200 bg-white">
-          <button onClick={() => setSidebarOpen(true)} className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-lg transition-all">
-            <Menu size={20} />
-          </button>
-          <span className="text-sm font-semibold text-gray-900 truncate">{doc.title}</span>
+        {/* PDF canvas - mobile card with independent scroll */}
+        <div className="md:hidden h-[75vh] bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-0 mx-3 mt-3">
+          <div className="flex-1 overflow-y-auto py-4 min-h-0">
+            <div className="flex justify-center px-3">
+              {pdfCanvas}
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto flex justify-center py-8 px-4 lg:px-8 bg-gray-100/50 relative">
-  <div style={{ width: pagesInfo[1]?.width || DEFAULT_PAGE_W, maxWidth: '100%', overflowX: 'auto' }} className="animate-fade-in">
- {/* Canvas toolbar */}
- <div className="flex items-center justify-between px-4 py-2 rounded-lg mb-6 bg-white border border-gray-200 shadow-sm">
- <p className="text-xs text-gray-400">Drag fields to reposition</p>
- {fields.length > 0 && (
- <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
- {fields.length} field{fields.length > 1 ? 's' : ''} placed
- </span>
- )}
- </div>
+        {/* PDF canvas - desktop */}
+        <div className="hidden md:flex justify-center py-8 px-8 bg-gray-100/50 flex-1 overflow-y-auto">
+          {pdfCanvas}
+        </div>
 
- {/* PDF Pages */}
- <div className="relative">
- {pdfUrl ? (
- <Document
- file={pdfUrl}
- onLoadSuccess={onDocumentLoadSuccess}
- loading={
- <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
- <Spinner size="lg" />
- <p className="text-xs text-gray-400 mt-3">Loading PDF...</p>
- </div>
- }
- >
- {Array.from({ length: totalPages }, (_, i) => {
-   const info = pagesInfo[i + 1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
-   return (
- <div key={i} className="relative mb-4">
- <div className="shadow-lg">
- <Page
- pageNumber={i + 1}
- width={info.width}
- onLoadSuccess={onPageLoadSuccess}
- renderAnnotationLayer={false}
- renderTextLayer={false}
- className="rounded-lg overflow-hidden bg-white"
- />
- </div>
+        {/* Mobile controls - styled cards */}
+        <div className="md:hidden space-y-3 px-3 pb-8 mt-3">
+          {/* Expiry Card */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            {expirySection}
+          </div>
 
- {/* Field overlays */}
- {fields.filter(f => Number(f.page) === i + 1).map(field => {
- const signerIdx = signers.findIndex(s => s.id === field.document_signer_id);
- const color = SIGNER_COLORS[Math.max(0, signerIdx) % SIGNER_COLORS.length];
- const signer = signers[signerIdx];
- const pos = field.position || {};
- const absX = pos.x ?? field.pos_x ?? 0;
- const pageRelY = pos.y ?? field.pos_y ?? 0;
+          {/* Signers Card */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-500">Signers</p>
+                <button
+                  onClick={() => setSignerModal(true)}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                >
+                  <UserPlus size={13} /> Add
+                </button>
+              </div>
 
- return (
- <FieldOverlay
- key={field.id}
- field={field}
- pageRelX={absX}
- pageRelY={pageRelY}
- pageW={info.width}
- pageH={info.height}
- signerName={signer?.name ?? 'Signer'}
- signerColor={color}
- allFields={fields.filter(f => Number(f.page) === i + 1)}
- onRemove={handleRemoveField}
- onMoved={(fId, x, y) => handleFieldMoved(fId, x, y, i)}
- />
- );
- })}
+              {signers.length === 0 ? (
+                <div className="py-6 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <UserPlus size={20} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-xs text-gray-400 mb-3">Add a signer to start</p>
+                  <Button size="sm" variant="secondary" onClick={() => setSignerModal(true)}>Add Signer</Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {signers.map((signer, i) => {
+                    const info = pagesInfo[1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
+                    return (
+                      <SignerCard
+                        key={signer.id}
+                        signer={signer}
+                        signerIndex={i}
+                        documentId={id}
+                        totalPages={totalPages}
+                        allFields={fields}
+                        pageW={info.width}
+                        pageH={info.height}
+                        onRemove={handleRemoveSigner}
+                        onApplied={refetch}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
 
- {/* Page separator */}
- {i < totalPages - 1 && (
- <div className="flex items-center justify-center py-2">
-  <span className="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-200">
- Page {i + 2}
- </span>
- </div>
- )}
- </div>
-   );
- })}
- </Document>
- ) : (
- <div className="flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
- <p className="text-xs text-gray-400">No preview available</p>
- </div>
-  )}
-  </div>
-  </div>
-  </div>
-  </div>
+          {/* Send Card */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            {sendSection}
+          </div>
+        </div>
+      </div>
 
-  <AddSignerModal open={signerModal} onClose={() => setSignerModal(false)} documentId={id} onAdded={refetch} />
-  </div>
- );
+      <AddSignerModal open={signerModal} onClose={() => setSignerModal(false)} documentId={id} onAdded={refetch} />
+    </div>
+  );
 }

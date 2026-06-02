@@ -56,6 +56,12 @@ export const documentApi = {
  approveCancel: (id) =>
  api.post(`/documents/${id}/approve-cancel`).then(r => r.data),
 
+   download: (id) =>
+   api.get(`/documents/${id}/download`, { responseType: 'blob' }).then(r => ({
+     data: r.data,
+     filename: r.headers['content-disposition']?.match(/filename="?(.+?)"?$/)?.[1] || 'document.pdf',
+   })),
+
   // ── Signers ────────────────────────────────────────────────────────────
  addSigner: (id, data) =>
  api.post(`/documents/${id}/signers`, data).then(r => r.data),

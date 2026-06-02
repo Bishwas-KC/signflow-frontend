@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { authApi } from '@/api/auth.api';
+import { auth, googleProvider } from '@/lib/firebase';
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
@@ -14,6 +16,26 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('token');
     return !(path.startsWith('/login') || path.startsWith('/register') || !token);
   });
+
+  useEffect(() => {
+    getRedirectResult(auth).then(async (result) => {
+      if (!result) return;
+      setLoading(true);
+      try {
+        const idToken = await result.user.getIdToken();
+        const res = await authApi.firebaseLogin(idToken);
+        const data = res.data || res;
+        saveSession(data.user, data.token);
+        toast.success(`Welcome, ${data.user.name}.`);
+        const params = new URLSearchParams(window.location.search);
+        window.location.href = params.get('redirect') || '/dashboard';
+      } catch {
+        toast.error('Google sign-in failed. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    });
+  }, [saveSession]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -58,14 +80,9 @@ export function AuthProvider({ children }) {
  setUser(null);
  }, []);
 
- const loginWithGoogle = useCallback(async () => {
-   try {
-     const res = await authApi.googleRedirect();
-     window.location.href = res.data.redirect_url;
-   } catch {
-     toast.error('Failed to initiate Google sign-in.');
-   }
-  }, []);
+  const loginWithGoogle = useCallback(async () => {
+    await signInWithRedirect(auth, googleProvider);
+   }, []);
 
  return (
  <AuthContext.Provider value={{ user, loading, register, login, logout, loginWithGoogle, saveSession }}>

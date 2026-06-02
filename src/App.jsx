@@ -20,7 +20,7 @@ const SigningLayout = lazy(() => import('@/layouts/SigningLayout'));
 const SigningPage = lazy(() => import('@/pages/sign/SigningPage'));
 const SigningAuthPage = lazy(() => import('@/pages/sign/SigningauthPage'));
 const ThankYouPage = lazy(() => import('@/pages/sign/ThankYouPage'));
-const GoogleCallbackPage = lazy(() => import('@/pages/auth/GoogleCallbackPage'));
+
 const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'));
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
@@ -58,7 +58,7 @@ export default function App() {
  <Route path="/sign/:token" element={<LazyRoute><SigningAuthPage /></LazyRoute>} />
 
  <Route path="/sign/:token/thank-you" element={<LazyRoute><ThankYouPage /></LazyRoute>} />
- <Route path="/auth/google/callback" element={<LazyRoute><GoogleCallbackPage /></LazyRoute>} />
+  
   <Route path="/" element={<LazyRoute><LandingPage /></LazyRoute>} />
   <Route path="/login" element={<LazyRoute><AuthLayout><LoginPage /></AuthLayout></LazyRoute>} />
    <Route path="/register" element={<LazyRoute><AuthLayout><RegisterPage /></AuthLayout></LazyRoute>} />

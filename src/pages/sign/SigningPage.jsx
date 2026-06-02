@@ -233,7 +233,7 @@ export default function SigningPage() {
           }
         }
       }
-      await signApi.submit(token, signatureData);
+      await signApi.submit(token, signatureData, sigTab);
       setOtpSent(true);
       setOtpKey(k => k + 1);
       toast.success('OTP sent to your email. Please check your inbox.');
@@ -247,15 +247,15 @@ export default function SigningPage() {
     }
   };
 
-  const handleVerify = async () => {
-    if (!otp || otp.length < 4) { toast.error('Please enter the OTP sent to your email.'); return; }
+  const handleSignOTP = async () => {
+    if (!otp) { setOtpError('Please enter the OTP.'); return; }
+    if (verifying) return;
     setVerifying(true);
     setOtpError('');
     try {
-      await signApi.verifyOtp(token, otp);
+      const res = await signApi.verifyOtp(token, otp);
       setOtpVerified(true);
-      toast.success('Document signed successfully.');
-      navigate(`/sign/${token}/thank-you?doc_id=${signingData?.document?.id}`);
+      toast.success('Document signed successfully!');
     } catch (err) {
       const msg = err?.response?.data?.message || 'Invalid or expired OTP.';
       setOtpError(msg);
@@ -271,7 +271,7 @@ export default function SigningPage() {
     setOtpError('');
     setOtp('');
     try {
-      await signApi.submit(token, signatureData);
+      await signApi.submit(token, signatureData, sigTab);
       setOtpSent(true);
       setOtpKey(k => k + 1);
       toast.success('OTP resent to your email.');

@@ -83,13 +83,13 @@ export default function LoginPage() {
  </div>
  )}
 
- <button
- onClick={loginWithGoogle}
- className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm active:scale-[0.98]"
- >
- <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
- Continue with Google
- </button>
+  <button
+  onClick={() => { loginWithGoogle(); }}
+  className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm active:scale-[0.98]"
+  >
+  <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+  Continue with Google
+  </button>
 
  <div className="relative flex items-center gap-4">
  <div className="flex-1 h-px bg-gray-100" />
