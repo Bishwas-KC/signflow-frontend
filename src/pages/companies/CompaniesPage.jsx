@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
+import { Badge } from '@/components/ui/Badge';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -15,244 +16,275 @@ import toast from 'react-hot-toast';
 const TABS = ['Info', 'Contact', 'Address', 'Branding'];
 
 function CompanyForm({ company, onSuccess, onClose }) {
-  const [tab, setTab] = useState('Info');
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm({
-    defaultValues: company ? {
-      name: company.info?.name, registration_number: company.info?.registration_number,
-      pan_number: company.info?.pan_number, industry: company.info?.industry,
-      established_date: company.info?.established_date,
-      phone: company.contact?.phone, email: company.contact?.email, website: company.contact?.website,
-      street_address: company.address?.street_address, city: company.address?.city,
-      district: company.address?.district, province: company.address?.province,
-      country: company.address?.country,
-    } : { country: 'Nepal' },
-  });
+ const [tab, setTab] = useState('Info');
+ const { register, handleSubmit, formState: { isSubmitting } } = useForm({
+ defaultValues: company ? {
+ name: company.info?.name, registration_number: company.info?.registration_number,
+ pan_number: company.info?.pan_number, industry: company.info?.industry,
+ established_date: company.info?.established_date,
+ phone: company.contact?.phone, email: company.contact?.email, website: company.contact?.website,
+ street_address: company.address?.street_address, city: company.address?.city,
+ district: company.address?.district, province: company.address?.province,
+ country: company.address?.country,
+ } : { country: 'Nepal' },
+ });
 
   const save = async (data) => {
     try {
       if (company) await companyApi.update(company.id, data);
-      else         await companyApi.create(data);
+      else await companyApi.create(data);
       onSuccess();
     } catch (err) {
       toast.error(err.response?.data?.error?.message || 'Failed to save company.');
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit(save)} className="space-y-4">
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-gray-200 -mx-6 px-6 mb-4">
-        {TABS.map(t => (
-          <button key={t} type="button" onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === t ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-          >{t}</button>
-        ))}
-      </div>
+  const handleLogoUpload = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try { await companyApi.uploadLogo(company.id, f); toast.success('Logo updated.'); onSuccess(); }
+    catch { toast.error('Logo upload failed.'); }
+  };
 
-      {tab === 'Info' && (
-        <div className="space-y-4">
-          <Input label="Company Name *" {...register('name', { required: true })} />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Registration Number" {...register('registration_number')} />
-            <Input label="PAN Number" {...register('pan_number')} />
-            <Input label="Industry" placeholder="Technology" {...register('industry')} />
-            <Input label="Established Date" type="date" {...register('established_date')} />
-          </div>
-        </div>
-      )}
-
-      {tab === 'Contact' && (
-        <div className="space-y-4">
-          <Input label="Phone" placeholder="+977-1-..." {...register('phone')} />
-          <Input label="Email" type="email" {...register('email')} />
-          <Input label="Website" placeholder="https://..." {...register('website')} />
-        </div>
-      )}
-
-      {tab === 'Address' && (
-        <div className="space-y-4">
-          <Input label="Street Address" {...register('street_address')} />
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="City" {...register('city')} />
-            <Input label="District" {...register('district')} />
-            <Input label="Province" {...register('province')} />
-            <Input label="Country" {...register('country')} />
-          </div>
-        </div>
-      )}
-
-      {tab === 'Branding' && (
-        <div className="space-y-4">
-          {company && (
-            <>
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Company Logo</p>
-                <div className="flex items-center gap-3">
-                  {company.branding?.logo_url && (
-                    <img src={company.branding.logo_url} alt="Logo" className="w-16 h-16 object-contain rounded-lg border" />
-                  )}
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*" className="sr-only"
-                      onChange={async (e) => {
-                        const f = e.target.files[0];
-                        if (!f) return;
-                        try { await companyApi.uploadLogo(company.id, f); toast.success('Logo updated.'); onSuccess(); }
-                        catch { toast.error('Logo upload failed.'); }
-                      }} />
-                    <span className="text-sm text-indigo-600 border border-indigo-300 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
-                      Upload Logo
-                    </span>
-                  </label>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700 mb-2">Company Seal</p>
-                <div className="flex items-center gap-3">
-                  {company.branding?.seal_url && (
-                    <img src={company.branding.seal_url} alt="Seal" className="w-16 h-16 object-contain rounded-lg border" />
-                  )}
-                  <label className="cursor-pointer">
-                    <input type="file" accept="image/*" className="sr-only"
-                      onChange={async (e) => {
-                        const f = e.target.files[0];
-                        if (!f) return;
-                        try { await companyApi.uploadSeal(company.id, f); toast.success('Seal updated.'); onSuccess(); }
-                        catch { toast.error('Seal upload failed.'); }
-                      }} />
-                    <span className="text-sm text-indigo-600 border border-indigo-300 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
-                      Upload Seal
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </>
-          )}
-          {!company && <p className="text-sm text-gray-500">Save the company first, then upload logo and seal.</p>}
-        </div>
-      )}
-
-      <div className="flex gap-3 pt-4">
-        <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
-        <Button type="submit" loading={isSubmitting} className="flex-1">
-          {company ? 'Save Changes' : 'Create Company'}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-export default function CompaniesPage() {
-  const queryClient = useQueryClient();
-  const [modal, setModal]     = useState(null);
-  const [deleteTarget, setDel] = useState(null);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['companies'],
-    queryFn:  () => companyApi.list({ per_page: 50 }),
-  });
-
-  const deleteMut = useMutation({
-    mutationFn: (id) => companyApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['companies'] });
-      toast.success('Company deleted.');
-      setDel(null);
-    },
-  });
-
-  const companies = data?.data || [];
-
-  const onFormSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['companies'] });
-    toast.success(modal?.id ? 'Company updated.' : 'Company created.');
-    setModal(null);
+  const handleSealUpload = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try { await companyApi.uploadSeal(company.id, f); toast.success('Seal updated.'); onSuccess(); }
+    catch { toast.error('Seal upload failed.'); }
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <PageHeader
-        title="Companies"
-        description="Manage your companies and their branding."
-        action={<Button onClick={() => setModal('create')}><Plus size={16} />Add Company</Button>}
-      />
+ <form onSubmit={handleSubmit(save)} className="space-y-4">
+ {/* Tab bar */}
+  <div role="tablist" className="flex gap-1 border-b border-gray-200 -mx-6 px-6 mb-4 overflow-x-auto flex-nowrap">
+ {TABS.map(t => (
+ <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
+ className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+ tab === t ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-500 hover:text-gray-700'
+ }`}
+ >{t}</button>
+ ))}
+ </div>
 
-      {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner /></div>
-      ) : companies.length === 0 ? (
-        <EmptyState
-          icon={Building2} title="No companies yet"
-          description="Add your company to attach it to documents and use your seal."
-          action={<Button onClick={() => setModal('create')}><Plus size={16} />Add Company</Button>}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {companies.map(c => (
-            <div key={c.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
-              <div className="flex items-start gap-3 mb-4">
-                {c.branding?.logo_url ? (
-                  <img src={c.branding.logo_url} alt="Logo" className="w-10 h-10 object-contain rounded-lg border flex-shrink-0" />
-                ) : (
-                  <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Building2 size={18} className="text-indigo-600" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm truncate">{c.info?.name}</p>
-                  {c.info?.industry && <p className="text-xs text-gray-500">{c.info.industry}</p>}
-                  {c.user_role && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full capitalize">{c.user_role}</span>}
-                </div>
-              </div>
+ {tab === 'Info' && (
+  <div role="tabpanel" className="space-y-4">
+ <Input label="Company Name *" {...register('name', { required: true })} />
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <Input label="Registration Number" {...register('registration_number')} />
+   <Input label="PAN" {...register('pan_number')} />
+  <Input label="Industry" placeholder="Technology" {...register('industry')} />
+  <Input label="Established Date" type="date" {...register('established_date')} />
+  </div>
+  </div>
+  )}
 
-              <div className="space-y-1.5 mb-4">
-                {c.contact?.phone && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Phone size={12} className="text-gray-400" />{c.contact.phone}
-                  </div>
-                )}
-                {c.contact?.email && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Mail size={12} className="text-gray-400" />{c.contact.email}
-                  </div>
-                )}
-                {c.contact?.website && (
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Globe size={12} className="text-gray-400" />{c.contact.website}
-                  </div>
-                )}
-                {c.address?.city && (
-                  <p className="text-xs text-gray-500">{[c.address.city, c.address.province, c.address.country].filter(Boolean).join(', ')}</p>
-                )}
-              </div>
+  {tab === 'Contact' && (
+  <div role="tabpanel" className="space-y-4">
+  <Input label="Phone" placeholder="+977-1-..." {...register('phone')} />
+  <Input label="Email" type="email" {...register('email')} />
+  <Input label="Website" placeholder="https://..." {...register('website')} />
+  </div>
+  )}
 
-              <div className="flex gap-2 pt-4 border-t border-gray-100">
-                <button onClick={() => setModal(c)}
-                  className="flex-1 text-xs text-gray-600 hover:text-indigo-600 flex items-center justify-center gap-1.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
-                  <Edit3 size={13} />Edit
-                </button>
-                <button onClick={() => setDel(c)}
-                  className="flex-1 text-xs text-gray-600 hover:text-red-500 flex items-center justify-center gap-1.5 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
-                  <Trash2 size={13} />Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+  {tab === 'Address' && (
+  <div role="tabpanel" className="space-y-4">
+  <Input label="Street Address" {...register('street_address')} />
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+ <Input label="City" {...register('city')} />
+ <Input label="District" {...register('district')} />
+ <Input label="Province" {...register('province')} />
+ <Input label="Country" {...register('country')} />
+ </div>
+ </div>
+ )}
 
-      <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? 'Edit Company' : 'Add Company'} size="lg">
-        <CompanyForm company={modal?.id ? modal : null} onSuccess={onFormSuccess} onClose={() => setModal(null)} />
-      </Modal>
+  {tab === 'Branding' && (
+  <div role="tabpanel" className="space-y-4">
+ {company && (
+ <>
+ <div>
+ <p className="text-sm font-medium text-gray-700 mb-2">Company Logo</p>
+ <div className="flex items-center gap-3">
+ {company.branding?.logo_url && (
+ <img src={company.branding.logo_url} alt="Logo" className="w-16 h-16 object-contain rounded-lg border" />
+ )}
+ <label className="cursor-pointer">
+          <input type="file" accept="image/*" className="sr-only"
+            onChange={handleLogoUpload} />
+          <span className="text-sm text-indigo-600 border border-indigo-300 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
+            Upload Logo
+          </span>
+ </label>
+ </div>
+ </div>
+ <div>
+ <p className="text-sm font-medium text-gray-700 mb-2">Company Seal</p>
+ <div className="flex items-center gap-3">
+ {company.branding?.seal_url && (
+ <img src={company.branding.seal_url} alt="Seal" className="w-16 h-16 object-contain rounded-lg border" />
+ )}
+ <label className="cursor-pointer">
+          <input type="file" accept="image/*" className="sr-only"
+            onChange={handleSealUpload} />
+          <span className="text-sm text-indigo-600 border border-indigo-300 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors">
+            Upload Seal
+          </span>
+ </label>
+ </div>
+ </div>
+ </>
+ )}
+ {!company && <p className="text-sm text-gray-500">Save the company first, then upload logo and seal.</p>}
+ </div>
+ )}
 
-      <ConfirmDialog
-        open={!!deleteTarget} onClose={() => setDel(null)}
-        onConfirm={() => deleteMut.mutate(deleteTarget.id)}
-        loading={deleteMut.isPending}
-        title="Delete company?"
-        message={`"${deleteTarget?.info?.name}" will be permanently deleted.`}
-        confirmLabel="Delete"
-      />
-    </div>
-  );
+ <div className="flex gap-3 pt-4">
+ <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancel</Button>
+ <Button type="submit" loading={isSubmitting} className="flex-1">
+ {company ? 'Save Changes' : 'Create Company'}
+ </Button>
+ </div>
+ </form>
+ );
+}
+
+export default function CompaniesPage() {
+ const queryClient = useQueryClient();
+ const [modal, setModal] = useState(null);
+ const [deleteTarget, setDel] = useState(null);
+
+ const { data, isLoading } = useQuery({
+ queryKey: ['companies'],
+ queryFn: () => companyApi.list({ per_page: 50 }),
+ });
+
+ const deleteMut = useMutation({
+ mutationFn: (id) => companyApi.delete(id),
+ onSuccess: () => {
+ queryClient.invalidateQueries({ queryKey: ['companies'] });
+  toast.success('Company profile deleted.');
+ setDel(null);
+ },
+ });
+
+ const companies = data?.data || [];
+
+ const onFormSuccess = () => {
+ queryClient.invalidateQueries({ queryKey: ['companies'] });
+ toast.success(modal?.id ? 'Company updated.' : 'Company created.');
+ setModal(null);
+ };
+
+ return (
+ <div className="p-4 sm:p-6 lg:p-10 max-w-7xl mx-auto space-y-6 sm:space-y-10 animate-fade-in">
+ <PageHeader
+ title="Business Profiles"
+ description="Manage your business profiles, branding assets, and corporate signature settings."
+ action={<Button size="lg" className="rounded-2xl shadow-xl shadow-indigo-500/20 px-8" onClick={() => setModal('create')}><Plus size={20} />Add Company</Button>}
+ />
+
+ {isLoading ? (
+ <div className="flex flex-col items-center justify-center py-32 gap-4">
+ <Spinner size="lg" />
+ <p className="text-sm font-black text-gray-400 uppercase tracking-widest animate-pulse">Loading profiles...</p>
+ </div>
+ ) : companies.length === 0 ? (
+ <div className="py-12 sm:py-24 bg-white rounded-[2.5rem] border border-dashed border-gray-200">
+ <EmptyState
+  icon={Building2} title="No companies found"
+ description="Register your company to enable custom branding on your signed documents and manage team workflows."
+ action={<Button variant="subtle" className="rounded-2xl px-10" onClick={() => setModal('create')}><Plus size={16} />Create Company Profile</Button>}
+ />
+ </div>
+ ) : (
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+ {companies.map(c => (
+ <div key={c.id} className="bg-white rounded-[2rem] border border-gray-100 p-6 sm:p-8 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group relative">
+ <div className="flex items-start gap-5 mb-8">
+ {c.branding?.logo_url ? (
+ <div className="w-16 h-16 bg-white rounded-2xl border border-gray-100 p-2 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-sm">
+ <img src={c.branding.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+ </div>
+ ) : (
+ <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform text-indigo-500">
+ <Building2 size={32} />
+ </div>
+ )}
+ <div className="flex-1 min-w-0">
+ <p className="font-black text-gray-900 text-xl truncate group-hover:text-indigo-600 transition-colors tracking-tight">{c.info?.name}</p>
+  {c.info?.industry && <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] mt-1.5">{c.info.industry}</p>}
+ {c.user_role && (
+ <Badge size="xs" variant="indigo" className="mt-3 px-3 py-0.5">
+ {c.user_role}
+ </Badge>
+ )}
+ </div>
+ </div>
+
+ <div className="space-y-4 mb-8 bg-gray-50/50 rounded-3xl p-6 border border-gray-50">
+ {c.contact?.phone && (
+ <div className="flex items-center gap-4 text-xs font-bold text-gray-600">
+ <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm"><Phone size={14} className="text-gray-400" /></div>
+ {c.contact.phone}
+ </div>
+ )}
+ {c.contact?.email && (
+ <div className="flex items-center gap-4 text-xs font-bold text-gray-600">
+ <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm"><Mail size={14} className="text-gray-400" /></div>
+ {c.contact.email}
+ </div>
+ )}
+ {c.contact?.website && (
+ <div className="flex items-center gap-4 text-xs font-bold text-gray-600">
+ <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm"><Globe size={14} className="text-gray-400" /></div>
+ <span className="truncate">{c.contact?.website?.replace(/^https?:\/\//, '')}</span>
+ </div>
+ )}
+ {c.address?.city && (
+ <div className="pt-2 border-t border-gray-100">
+  <p className="text-xs font-black text-gray-300 uppercase tracking-widest text-center">
+ {[c.address.city, c.address.province, c.address.country].filter(Boolean).join(' · ')}
+ </p>
+ </div>
+ )}
+ </div>
+
+ <div className="flex gap-2 pt-6 border-t border-gray-50">
+ <button onClick={() => setModal(c)}
+  className="flex-1 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-indigo-600 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-indigo-50 transition-all min-h-[44px]">
+ <Edit3 size={14} />Settings
+ </button>
+ <button onClick={() => setDel(c)}
+  className="flex-1 text-xs font-black uppercase tracking-widest text-gray-400 hover:text-red-500 flex items-center justify-center gap-2 py-2 rounded-xl hover:bg-red-50 transition-all min-h-[44px]">
+  <Trash2 size={14} />Delete
+ </button>
+ </div>
+ </div>
+ ))}
+ </div>
+ )}
+
+ <Modal
+ open={!!modal}
+ onClose={() => setModal(null)}
+ title={modal?.id ? 'Company Settings' : 'Register New Company'}
+ size="lg"
+>
+ <CompanyForm
+ key={modal?.id ?? 'new'} 
+ company={modal?.id ? modal : null}
+ onSuccess={onFormSuccess}
+ onClose={() => setModal(null)}
+ />
+</Modal>
+ <ConfirmDialog
+ open={!!deleteTarget} onClose={() => setDel(null)}
+ onConfirm={() => deleteMut.mutate(deleteTarget.id)}
+ loading={deleteMut.isPending}
+  title="Delete Company Profile?"
+  message={`This will permanently remove "${deleteTarget?.info?.name}" and all associated branding assets. This action is not reversible.`}
+  confirmLabel="Delete Profile"
+ />
+ </div>
+ );
 }

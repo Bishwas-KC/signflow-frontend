@@ -1,19 +1,27 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Draggable from 'react-draggable';
+import { Document, Page } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 import { documentApi } from '@/api/document.api';
-import { contactApi }  from '@/api/contact.api';
-import { Button }  from '@/components/ui/Button';
-import { Modal }   from '@/components/ui/Modal';
+import { contactApi } from '@/api/contact.api';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { Spinner } from '@/components/ui/Spinner';
-import { Badge }   from '@/components/ui/Badge';
-import { FIELD_TYPES, SIGN_ROLES } from '@/utils/constants';
-import { getInitials } from '@/utils/helpers';
+import { Input } from '@/components/ui/Input';
+import { SIGNATURE_FIELD, SCREEN_DPI, PDF_POINTS_INCH } from '@/utils/constants';
+import { getInitials, classNames } from '@/utils/helpers';
 import {
   ArrowLeft, Send, UserPlus, CheckCircle,
   AlertCircle, X, ChevronRight, Zap,
 } from 'lucide-react';
+import DatePicker from 'react-datepicker';
+import { enUS } from 'date-fns/locale';
+import 'react-datepicker/dist/react-datepicker.css';
+import './datepicker.css';
 import toast from 'react-hot-toast';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -200,6 +208,31 @@ function FieldOverlay({ field, signer, onRemove, onMoved }) {
   const fieldType = FIELD_TYPES.find(f => f.value === field.field_type);
   const color = fieldType?.color || '#7c6ef5';
   const nodeRef = useRef(null);
+  const [key, setKey] = useState(0);
+  const w = field.position?.width ?? field.width ?? SIGNATURE_FIELD.width;
+  const h = field.position?.height ?? field.height ?? SIGNATURE_FIELD.height;
+  const startX = pageRelX * scale;
+  const startY = pageRelY * scale;
+  const startPos = { x: startX, y: startY };
+
+  const handleStop = (_, d) => {
+  let newX = Math.round(d.x / scale);
+  let newY = Math.round(d.y / scale);
+
+  newX = Math.max(0, Math.min(newX, pageW - w));
+  newY = Math.max(0, Math.min(newY, pageH - h));
+
+  if (wouldOverlap(newX, newY, field.id, allFields, w, h)) {
+  setKey(k => k + 1);
+   toast.error('Cannot place here — overlaps another signature field.');
+  return;
+  }
+
+  onMoved(field.id, newX, newY);
+  };
+
+  const scaledW = Math.round(w * scale);
+  const scaledH = Math.round(h * scale);
 
   return (
     <Draggable
@@ -274,6 +307,151 @@ function FieldOverlay({ field, signer, onRemove, onMoved }) {
       </div>
     </Draggable>
   );
+ 
+ setPageInput('');
+ setMode(null);
+ setOpen(false);
+ onApplied();
+ } catch (err) {
+  toast.error(err?.response?.data?.error?.message || 'Failed to apply fields.');
+ } finally {
+ setApplying(false);
+ }
+ };
+
+ return (
+ <div className="px-3 pb-3">
+ <button
+ onClick={() => setOpen(!open)}
+ className={classNames(
+ 'w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+ open ? signerColor.bg : 'hover:bg-gray-50'
+ )}
+ >
+ <span className={classNames(
+ 'truncate',
+ open ? signerColor.text : signerFields.length > 0 ? signerColor.text : 'text-gray-500'
+ )}>
+ {getDropdownLabel()}
+ </span>
+ {open ? <ChevronUp size={14} className="text-gray-400 flex-shrink-0 ml-2" /> : <ChevronDown size={14} className="text-gray-400 flex-shrink-0 ml-2" />}
+ </button>
+
+ {open && (
+ <div className="mt-2 space-y-3 animate-fade-in">
+ {/* All Pages option */}
+ <button
+ onClick={() => setMode('all')}
+ className={classNames(
+ 'w-full px-3 py-2.5 rounded-lg text-sm text-left transition-colors border',
+ mode === 'all'
+ ? classNames(signerColor.bg, signerColor.border, signerColor.text)
+ : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+ )}
+ >
+ <div className="flex items-center justify-between">
+ <div className="flex items-center gap-2">
+ <div className={classNames('w-4 h-4 rounded-full border-2 flex items-center justify-center',
+ mode === 'all' ? signerColor.border : 'border-gray-300')}>
+ {mode === 'all' && <div className={classNames('w-2.5 h-2.5 rounded-full', signerColor.dot)} />}
+ </div>
+ <span className="font-medium">All Pages</span>
+ </div>
+ <span className="text-xs text-gray-400">{totalPages} pages</span>
+ </div>
+ </button>
+
+ {/* Select Pages option */}
+ <div className={classNames(
+ 'rounded-lg border transition-colors',
+ mode === 'select' ? signerColor.border : 'border-gray-200'
+ )}>
+ <button
+ onClick={() => setMode('select')}
+ className={classNames(
+ 'w-full px-3 py-2.5 rounded-t-lg text-sm text-left transition-colors flex items-center gap-2',
+ mode === 'select' ? signerColor.text : 'text-gray-700'
+ )}
+ >
+ <div className={classNames('w-4 h-4 rounded-full border-2 flex items-center justify-center',
+ mode === 'select' ? signerColor.border : 'border-gray-300')}>
+ {mode === 'select' && <div className={classNames('w-2.5 h-2.5 rounded-full', signerColor.dot)} />}
+ </div>
+ <span className="font-medium">Select Pages</span>
+ </button>
+
+ {mode === 'select' && (
+ <div className="px-3 pb-3">
+ <Input
+ value={pageInput}
+ onChange={e => setPageInput(e.target.value)}
+ placeholder="e.g. 1,2,6,3"
+ className="text-sm"
+ />
+ <p className="text-[11px] text-gray-400 mt-1">Enter page numbers separated by commas</p>
+ </div>
+ )}
+ </div>
+
+ <Button
+ onClick={handleApply}
+ disabled={applying || !mode || (mode === 'select' && !pageInput.trim())}
+ className="w-full"
+ size="sm"
+ >
+ {applying ? <Spinner size="xs" /> : <Plus size={14} />}
+ {mode === 'all' ? `Add to all ${totalPages} pages` : mode === 'select' ? 'Add to selected pages' : 'Add fields'}
+ </Button>
+ </div>
+ )}
+ </div>
+ );
+}
+
+// ─── SignerCard ────────────────────────────────────────────────────────────────
+function SignerCard({ signer, signerIndex, documentId, totalPages, allFields, pageW, pageH, onRemove, onApplied }) {
+ const color = SIGNER_COLORS[signerIndex % SIGNER_COLORS.length];
+
+ return (
+ <div className={classNames(
+ 'rounded-xl border overflow-hidden transition-all',
+ 'border-gray-200 bg-white'
+ )}>
+ {/* Signer header */}
+ <div className={classNames('flex items-center gap-3 px-4 py-3', color.bg)}>
+ <div className={classNames('w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0', color.dot)}>
+ {getInitials(signer.name)}
+ </div>
+ <div className="flex-1 min-w-0">
+ {signer.signing_order && (
+  <span className="text-xs font-medium text-gray-400">
+ #{signer.signing_order}
+ </span>
+ )}
+ <p className="text-sm font-semibold truncate leading-tight text-gray-900">{signer.name}</p>
+ <p className="text-xs text-gray-500 truncate">{signer.email}</p>
+ </div>
+ <button
+ onClick={() => onRemove(signer.id)}
+ className="w-7 h-7 rounded-md flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+ >
+ <Trash2 size={13} />
+ </button>
+ </div>
+
+ {/* Page selector dropdown */}
+ <SignerPageSelector
+ signer={signer}
+ signerColor={color}
+ documentId={documentId}
+ totalPages={totalPages}
+ allFields={allFields}
+ pageW={pageW}
+ pageH={pageH}
+ onApplied={onApplied}
+ />
+ </div>
+ );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -292,21 +470,35 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
     enabled:  open && tab === 'contacts',
   });
 
-  const reset = () => { setName(''); setEmail(''); setRole('signer'); };
+  const reset = () => { setName(''); setEmail(''); setSaveContact(false); };
 
-  const addSigner = async (signerData) => {
-    setLoading(true);
-    try {
-      await documentApi.addSigner(documentId, signerData);
-      toast.success(`${signerData.name} added as ${signerData.sign_role}.`);
-      onAdded();
-      onClose();
-      reset();
-    } catch (err) {
-      toast.error(err.response?.data?.error?.message || 'Failed to add signer.');
-    } finally {
-      setLoading(false);
-    }
+  const add = async (payload) => {
+  setSaving(true);
+  try {
+  await documentApi.addSigner(documentId, payload);
+  if (saveContact) {
+  try {
+  await contactApi.create({ full_name: payload.name, email: payload.email, sign_role: 'signer' });
+  toast.success(`${payload.name} saved to contacts.`);
+  } catch (contactErr) {
+  const code = contactErr?.response?.data?.error?.code;
+  const msg = contactErr?.response?.data?.error?.message || '';
+  if (code === 'CONTACT_EMAIL_EXISTS' || msg.includes('already exists')) {
+  toast(`${payload.name} is already in your contacts.`, { icon: 'ℹ️' });
+  } else if (msg.includes('cannot add yourself')) {
+  toast('You cannot add yourself as a contact.', { icon: 'ℹ️' });
+  }
+  }
+  }
+  toast.success(`${payload.name} added.`);
+  onAdded();
+  onClose();
+  reset();
+  } catch (err) {
+  toast.error(err?.response?.data?.error?.message || 'Failed to add signer.');
+  } finally {
+  setSaving(false);
+  }
   };
 
   if (!open) return null;
@@ -529,28 +721,32 @@ function SendPanel({ documentId, isSendable, onSent }) {
   const [validating, setValidating] = useState(false);
   const [sending, setSending]       = useState(false);
 
-  const runValidate = async () => {
-    setValidating(true);
     try {
       const res = await documentApi.validate(documentId);
-      setResult(res.data);
-    } catch {
-      toast.error('Validation request failed.');
-    } finally {
-      setValidating(false);
-    }
-  };
+      const validation = res.data;
 
-  const runSend = async () => {
-    setSending(true);
-    try {
-      await documentApi.send(documentId);
-      toast.success('Document sent to all signers!');
-      onSent();
-    } catch (err) {
-      toast.error(err.response?.data?.error?.message || 'Failed to send.');
+      if (!validation.valid) {
+        setResult(validation);
+        setIsProcessing(false);
+        return;
+      }
+
+      try {
+        await documentApi.send(documentId);
+        toast.success('Document sent.');
+        onSent();
+      } catch (err) {
+        const code = err?.response?.data?.error?.code;
+        if (code === 'DOCUMENT_EXPIRED') {
+          setExpiredError(true);
+        } else {
+          toast.error(err?.response?.data?.error?.message || 'Failed to send.');
+        }
+      }
+    } catch {
+      toast.error('Validation failed.');
     } finally {
-      setSending(false);
+      setIsProcessing(false);
     }
   };
 
@@ -635,18 +831,17 @@ function SendPanel({ documentId, isSendable, onSent }) {
    Main Page
 ───────────────────────────────────────────────────────────────────────────── */
 export default function DocumentEditorPage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const canvasRef = useRef(null);
+ const { id } = useParams();
+ const navigate = useNavigate();
+ const queryClient = useQueryClient();
 
   const [signerModal, setSignerModal]       = useState(false);
   const [activeSigner, setActiveSigner]     = useState(null);
   const [activeFieldType, setActiveFieldType] = useState(null);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['document', id],
-    queryFn:  () => documentApi.get(id),
+  queryKey: ['document', id],
+  queryFn: () => documentApi.get(id),
   });
 
   const doc = data?.data?.document;
@@ -684,8 +879,7 @@ export default function DocumentEditorPage() {
     try {
       await documentApi.updateField(id, fieldId, { pos_x: Math.round(x), pos_y: Math.round(y) });
       refetch();
-    } catch {
-      toast.error('Failed to save field position.');
+      toast.error(err?.response?.data?.error?.message || 'Failed to update expiry date.');
     }
   }, [id, refetch]);
 
@@ -708,7 +902,32 @@ export default function DocumentEditorPage() {
     } catch (err) {
       toast.error(err.response?.data?.error?.message || 'Failed to remove signer.');
     }
-  }, [id, activeSigner, refetch]);
+  }));
+ }, []);
+
+ const handleFieldMoved = useCallback(async (fieldId, pageRelX, pageRelY, pageIdx) => {
+ const page = pageIdx + 1;
+ try {
+ await documentApi.updateField(id, fieldId, {
+ pos_x: pageRelX,
+ pos_y: pageRelY,
+ page
+ });
+ refetch();
+ } catch {
+    toast.error('Failed to save position.');
+ }
+ }, [id, refetch]);
+
+ const handleRemoveField = useCallback(async (fieldId) => {
+ try {
+ await documentApi.removeField(id, fieldId);
+ refetch();
+  toast.success('Field deleted.');
+ } catch {
+    toast.error('Failed to delete field.');
+ }
+ }, [id, refetch]);
 
   const signerPalette = ['#7c6ef5','#06b6d4','#10b981','#f59e0b','#ec4899','#f97316'];
   const isPlacing = !!activeFieldType;
@@ -802,6 +1021,29 @@ export default function DocumentEditorPage() {
             </div>
           </div>
         </div>
+      ) : (
+        <div className="space-y-2">
+          {signers.map((signer, i) => {
+            const info = pagesInfo[1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
+            return (
+              <SignerCard
+                key={signer.id}
+                signer={signer}
+                signerIndex={i}
+                documentId={id}
+                totalPages={totalPages}
+                allFields={fields}
+                pageW={info.width}
+                pageH={info.height}
+                onRemove={handleRemoveSigner}
+                onApplied={refetch}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
         {/* Scrollable body */}
         <div className="de-sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 0' }}>
@@ -1089,7 +1331,7 @@ export default function DocumentEditorPage() {
             >
               Click to place {FIELD_TYPES.find(f => f.value === activeFieldType)?.label} · Esc to cancel
             </div>
-          )}
+          </div>
         </div>
       </main>
 
@@ -1100,12 +1342,64 @@ export default function DocumentEditorPage() {
         style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
       />
 
-      <AddSignerModal
-        open={signerModal}
-        onClose={() => setSignerModal(false)}
-        documentId={id}
-        onAdded={refetch}
-      />
+        {/* Mobile controls - styled cards */}
+        <div className="md:hidden space-y-3 px-3 pb-8 mt-3">
+          {/* Expiry Card */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            {expirySection}
+          </div>
+
+          {/* Signers Card */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-gray-500">Signers</p>
+                <button
+                  onClick={() => setSignerModal(true)}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                >
+                  <UserPlus size={13} /> Add
+                </button>
+              </div>
+
+              {signers.length === 0 ? (
+                <div className="py-6 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <UserPlus size={20} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-xs text-gray-400 mb-3">Add a signer to start</p>
+                  <Button size="sm" variant="secondary" onClick={() => setSignerModal(true)}>Add Signer</Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {signers.map((signer, i) => {
+                    const info = pagesInfo[1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
+                    return (
+                      <SignerCard
+                        key={signer.id}
+                        signer={signer}
+                        signerIndex={i}
+                        documentId={id}
+                        totalPages={totalPages}
+                        allFields={fields}
+                        pageW={info.width}
+                        pageH={info.height}
+                        onRemove={handleRemoveSigner}
+                        onApplied={refetch}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Send Card */}
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+            {sendSection}
+          </div>
+        </div>
+      </div>
+
+      <AddSignerModal open={signerModal} onClose={() => setSignerModal(false)} documentId={id} onAdded={refetch} />
     </div>
   );
 }

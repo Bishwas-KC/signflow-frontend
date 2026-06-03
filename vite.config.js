@@ -20,4 +20,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          pdf: ['react-pdf', 'pdfjs-dist'],
+          charts: ['recharts'],
+          signature: ['react-signature-canvas', 'react-draggable'],
+          datepicker: ['react-datepicker', 'date-fns'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 520,
+  },
 });

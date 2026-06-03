@@ -1,123 +1,103 @@
-import { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import {LayoutDashboard, FileText, Users, Building2,LogOut, Menu, X, ChevronDown,} from 'lucide-react';
-import { getInitials } from '@/utils/helpers';
-import { ProfileModal } from '@/components/shared/ProfileModal';
-
-
-const navItems = [
-  { to: '/dashboard',              icon: LayoutDashboard, label: 'Dashboard'  },
-  { to: '/dashboard/documents',    icon: FileText,         label: 'Documents'  },
-  { to: '/dashboard/contacts',     icon: Users,            label: 'Contacts'   },
-  { to: '/dashboard/companies',    icon: Building2,        label: 'Companies'  },
-];
+import { useState, useEffect } from 'react';
+import { Outlet } from 'react-router-dom';
+import { Menu, Mail, AlertCircle, X, CheckCircle } from 'lucide-react';
+import { Sidebar } from '@/components/shared/Sidebar';
+import { useAuth } from '@/hooks/useAuth';
+import { authApi } from '@/api/auth.api';
+import toast from 'react-hot-toast';
 
 export default function DashboardLayout() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(true);
 
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [sidebarOpen]);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
+  const handleResend = async () => {
+    if (!user?.email || resending) return;
+    setResending(true);
+    try {
+      await authApi.resendVerification(user.email);
+      toast.success('Verification email sent! Please check your inbox.', {
+        duration: 5000,
+        icon: <CheckCircle className="text-emerald-500" size={20} />,
+      });
+    } catch (err) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to resend verification email.');
+    } finally {
+      setResending(false);
+    }
   };
 
-  const Sidebar = ({ mobile = false }) => (
-    <div className={`flex flex-col h-full bg-white border-r border-gray-200 ${mobile ? 'w-64' : 'w-64'}`}>
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold">S</span>
-        </div>
-        <span className="text-xl font-bold text-gray-900">Signflow</span>
-        {mobile && (
-          <button onClick={() => setSidebarOpen(false)} className="ml-auto text-gray-400 hover:text-gray-600">
-            <X size={20} />
-          </button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/dashboard'}
-            onClick={() => setSidebarOpen(false)}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`
-            }
-          >
-            <Icon size={18} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* User footer */}
-      <div className="px-3 py-4 border-t border-gray-100">
-  <div className="flex items-center gap-3 px-3 py-2">
-    <button
-      onClick={() => setProfileOpen(true)}
-      className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-semibold text-sm flex-shrink-0 hover:ring-2 hover:ring-indigo-400 transition-all"
-      title="Edit profile"
-    >
-      {getInitials(user?.name)}
-    </button>
-    <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
-      <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-    </div>
-    <button onClick={handleLogout} title="Logout"
-      className="text-gray-400 hover:text-red-500 transition-colors">
-      <LogOut size={16} />
-    </button>
-  </div>
-</div>
-    </div>
-  );
+  const isVerified = user?.email_verified_at !== null;
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex flex-shrink-0">
-        <Sidebar />
-      </div>
+    <div className="flex h-screen h-dynamic bg-gray-50 overflow-hidden">
+      {/* Desktop sidebar wrapper — this transitions width */}
+      <div className={`hidden lg:block flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden ${
+        collapsed ? 'w-[72px]' : 'w-64'
+      }`}>
+<Sidebar collapsed={collapsed} setCollapsed={setCollapsed} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+          </div>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 h-full z-50">
-            <Sidebar mobile />
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm md:backdrop-blur-md animate-fade-in motion-reduce:animate-none" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 h-full z-50 animate-slide-right">
+            <Sidebar mobile collapsed={collapsed} setCollapsed={setCollapsed} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
           </div>
         </div>
       )}
-      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
-
-
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Verification Banner */}
+        {!isVerified && bannerVisible && (
+          <div className="bg-indigo-600 text-white px-4 py-2.5 flex items-center justify-between gap-4 animate-fade-in flex-shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Mail size={16} className="text-white" />
+              </div>
+              <div className="text-xs sm:text-sm font-medium truncate">
+                Please verify your email address to unlock all features.
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className="px-3 py-1 bg-white text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-50 transition-colors disabled:opacity-50"
+              >
+                {resending ? 'Sending...' : 'Resend Email'}
+              </button>
+              <button
+                onClick={() => setBannerVisible(false)}
+                className="p-1 hover:bg-white/10 rounded-md transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Mobile topbar */}
-        <header className="lg:hidden flex items-center gap-4 px-4 py-3 bg-white border-b border-gray-200">
-          <button onClick={() => setSidebarOpen(true)} className="text-gray-500">
-            <Menu size={22} />
+        <header className="lg:hidden flex items-center justify-between px-4 sm:px-6 py-4 bg-white border-b border-gray-100">
+          <button onClick={() => setSidebarOpen(true)} className="p-3 text-gray-400 hover:text-indigo-600 hover:bg-gray-50 rounded-xl transition-all">
+            <Menu size={24} />
           </button>
-          <span className="font-semibold text-gray-900">Signflow</span>
+          <span className="font-black text-xl text-gray-900 tracking-tighter">Signflow</span>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 pb-16 sm:pb-20">
+          <div className="min-h-full">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>
