@@ -15,18 +15,8 @@ import { Input } from '@/components/ui/Input';
 import { SIGNATURE_FIELD, SCREEN_DPI, PDF_POINTS_INCH } from '@/utils/constants';
 import { getInitials, classNames } from '@/utils/helpers';
 import {
-  ArrowLeft,
-  UserPlus,
-
-  AlertCircle,
-  Send,
-  X,
-  Trash2,
-  Plus,
-  ChevronDown,
-  ChevronUp,
-  GripVertical,
-  Clock,
+  ArrowLeft, Send, UserPlus, CheckCircle,
+  AlertCircle, X, ChevronRight, Zap,
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { enUS } from 'date-fns/locale';
@@ -34,124 +24,189 @@ import 'react-datepicker/dist/react-datepicker.css';
 import './datepicker.css';
 import toast from 'react-hot-toast';
 
-const DEFAULT_PAGE_W = 794;
-const DEFAULT_PAGE_H = 1123;
+/* ─────────────────────────────────────────────────────────────────────────────
+   Google Fonts injection (Instrument Serif + DM Sans)
+───────────────────────────────────────────────────────────────────────────── */
+const FontLink = () => (
+  <link
+    href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap"
+    rel="stylesheet"
+  />
+);
 
-const SIGNER_COLORS = [
- { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-600', border: 'border-indigo-300', ring: 'ring-indigo-200', light: 'bg-indigo-100' },
- { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-600', border: 'border-emerald-300', ring: 'ring-emerald-200', light: 'bg-emerald-100' },
- { bg: 'bg-purple-50', text: 'text-purple-700', dot: 'bg-purple-600', border: 'border-purple-300', ring: 'ring-purple-200', light: 'bg-purple-100' },
- { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-600', border: 'border-orange-300', ring: 'ring-orange-200', light: 'bg-orange-100' },
- { bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-600', border: 'border-sky-300', ring: 'ring-sky-200', light: 'bg-sky-100' },
- { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-600', border: 'border-pink-300', ring: 'ring-pink-200', light: 'bg-pink-100' },
-];
+/* ─────────────────────────────────────────────────────────────────────────────
+   Design Tokens  (injected once at root)
+───────────────────────────────────────────────────────────────────────────── */
+const GlobalStyle = () => (
+  <style>{`
+    :root {
+      --sidebar-bg:   #0f1117;
+      --sidebar-border: #1e2130;
+      --sidebar-muted: #3a3f52;
+      --panel-bg:     #161924;
+      --accent:       #7c6ef5;
+      --accent-glow:  rgba(124,110,245,0.18);
+      --accent-light: rgba(124,110,245,0.10);
+      --canvas-bg:    #f0ede8;
+      --text-primary: #f4f3f0;
+      --text-secondary: #8b8fa8;
+      --text-muted:   #4a4f65;
+      --danger:       #f87171;
+      --success:      #34d399;
+      --warning:      #fbbf24;
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body:    'DM Sans', system-ui, sans-serif;
+      --radius:       12px;
+      --radius-sm:    8px;
+    }
+    .de-page * { font-family: var(--font-body); box-sizing: border-box; }
+    .de-page { background: var(--sidebar-bg); }
 
-// ─── Overlap Detection ─────────────────────────────────────────────────────────
-const OVERLAP_PADDING = 8;
+    .de-sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .de-sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+    .de-sidebar-scroll::-webkit-scrollbar-thumb { background: var(--sidebar-muted); border-radius: 4px; }
 
-function rectsOverlap(a, b) {
- return !(
- a.x + a.w - OVERLAP_PADDING < b.x ||
- b.x + b.w - OVERLAP_PADDING < a.x ||
- a.y + a.h - OVERLAP_PADDING < b.y ||
- b.y + b.h - OVERLAP_PADDING < a.y
- );
+    .de-field-btn {
+      position: relative; overflow: hidden;
+      transition: all 0.2s ease;
+    }
+    .de-field-btn::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--accent-light);
+      opacity: 0; transition: opacity 0.2s;
+      border-radius: var(--radius-sm);
+    }
+    .de-field-btn:hover::before { opacity: 1; }
+    .de-field-btn.active::before { opacity: 1; background: var(--accent-glow); }
+
+    .de-signer-card {
+      transition: all 0.18s ease;
+      cursor: pointer;
+    }
+    .de-signer-card:hover { transform: translateX(2px); }
+    .de-signer-card.active { background: var(--accent-light); border-color: var(--accent) !important; }
+
+    .de-send-btn {
+      background: linear-gradient(135deg, #7c6ef5 0%, #5a4fcf 100%);
+      box-shadow: 0 4px 20px rgba(124,110,245,0.35);
+      transition: all 0.2s ease;
+    }
+    .de-send-btn:hover:not(:disabled) {
+      box-shadow: 0 6px 28px rgba(124,110,245,0.5);
+      transform: translateY(-1px);
+    }
+    .de-send-btn:disabled { opacity: 0.4; box-shadow: none; transform: none; }
+
+    .de-validate-btn {
+      background: transparent;
+      border: 1px solid var(--sidebar-muted);
+      transition: all 0.2s ease;
+    }
+    .de-validate-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .de-canvas-grid {
+      background-color: var(--canvas-bg);
+      background-image:
+        radial-gradient(circle, rgba(0,0,0,0.12) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .de-field-overlay {
+      transition: box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .de-field-overlay:hover { transform: scale(1.02); }
+
+    .de-modal-overlay {
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+    }
+
+    .de-tab-pill {
+      transition: all 0.2s ease;
+    }
+    .de-contact-row {
+      transition: all 0.18s ease;
+    }
+    .de-contact-row:hover { transform: translateX(3px); }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .de-animate-up { animation: slideUp 0.3s ease forwards; }
+
+    @keyframes pulse-ring {
+      0%   { box-shadow: 0 0 0 0 rgba(124,110,245,0.4); }
+      70%  { box-shadow: 0 0 0 8px rgba(124,110,245,0); }
+      100% { box-shadow: 0 0 0 0 rgba(124,110,245,0); }
+    }
+    .de-pulse { animation: pulse-ring 2s infinite; }
+
+    .de-placement-hint {
+      animation: slideUp 0.25s ease;
+      background: linear-gradient(135deg, #7c6ef5, #5a4fcf);
+      box-shadow: 0 8px 32px rgba(124,110,245,0.5);
+    }
+  `}</style>
+);
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Section Header
+───────────────────────────────────────────────────────────────────────────── */
+function SectionLabel({ children, action }) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <span style={{
+        fontFamily: 'var(--font-body)',
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: 'var(--text-muted)',
+      }}>
+        {children}
+      </span>
+      {action}
+    </div>
+  );
 }
 
-function getFieldRect(field) {
- const pos = field.position || {};
- const w = pos.width ?? field.width ?? SIGNATURE_FIELD.width;
- const h = pos.height ?? field.height ?? SIGNATURE_FIELD.height;
- const x = pos.x ?? field.pos_x ?? 0;
- const y = pos.y ?? field.pos_y ?? 0;
- return { x, y, w, h };
+/* ─────────────────────────────────────────────────────────────────────────────
+   Divider
+───────────────────────────────────────────────────────────────────────────── */
+function Divider() {
+  return <div style={{ height: 1, background: 'var(--sidebar-border)', margin: '4px -20px' }} />;
 }
 
-function findNonOverlappingPosition(pageW, pageH, fieldWidth, fieldHeight, allPageFields, excludeId) {
- const fieldsOnPage = allPageFields.filter(f => f.id !== excludeId);
- if (fieldsOnPage.length === 0) {
- return { x: Math.round((pageW - fieldWidth) / 2), y: 60 };
- }
-
- const startY = 60;
- const stepY = fieldHeight + 16;
- const cols = 2;
- const colWidth = Math.round((pageW - 40) / cols);
-
- for (let row = 0; row < 50; row++) {
- for (let col = 0; col < cols; col++) {
- const x = 20 + col * colWidth + Math.round((colWidth - fieldWidth) / 2);
- const y = startY + row * stepY;
-
- if (y + fieldHeight > pageH - 40) continue;
-
- const candidate = { x, y, w: fieldWidth, h: fieldHeight };
-  const overlaps = fieldsOnPage.some(f => rectsOverlap(candidate, getFieldRect(f)));
-
- if (!overlaps) {
- return { x, y };
- }
- }
- }
-
- return null;
+/* ─────────────────────────────────────────────────────────────────────────────
+   Avatar
+───────────────────────────────────────────────────────────────────────────── */
+function Avatar({ name, color, size = 30 }) {
+  return (
+    <div style={{
+      width: size, height: size,
+      borderRadius: '50%',
+      background: color,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#fff',
+      fontSize: size * 0.32,
+      fontWeight: 700,
+      flexShrink: 0,
+      letterSpacing: '0.02em',
+      boxShadow: `0 2px 8px ${color}55`,
+    }}>
+      {getInitials(name)}
+    </div>
+  );
 }
 
-function wouldOverlap(newX, newY, excludeId, allFields, fieldW, fieldH) {
- const candidate = { x: newX, y: newY, w: fieldW, h: fieldH };
- return allFields.some(f => {
- if (f.id === excludeId) return false;
- return rectsOverlap(candidate, getFieldRect(f));
- });
-}
-
-// ─── parsePageInput ────────────────────────────────────────────────────────────
-function parsePageInput(input, totalPages) {
- const parts = input.split(',').map(s => s.trim()).filter(Boolean);
- const pages = new Set();
- const errors = [];
-
- for (const part of parts) {
- // Support ranges like "1-5" or "3-7"
- if (part.includes('-') && !part.includes(' ')) {
- const [startStr, endStr] = part.split('-').map(s => s.trim());
- const start = parseInt(startStr, 10);
- const end = parseInt(endStr, 10);
- 
- if (isNaN(start) || isNaN(end) || start < 1 || end < start) {
- errors.push(`"${part}" is not a valid page range`);
- continue;
- }
- 
- let rangeValid = true;
- for (let i = start; i <= end; i++) {
- if (i > totalPages) {
- errors.push(`Page ${i} does not exist (document has ${totalPages} page${totalPages > 1 ? 's' : ''})`);
- rangeValid = false;
- break;
- }
- pages.add(i);
- }
- if (!rangeValid) continue;
- } else {
- const num = parseInt(part, 10);
- if (isNaN(num) || num < 1) {
- errors.push(`"${part}" is not a valid page number`);
- continue;
- }
- if (num > totalPages) {
- errors.push(`Page ${num} does not exist (document has ${totalPages} page${totalPages > 1 ? 's' : ''})`);
- continue;
- }
- pages.add(num);
- }
- }
-
- return { pages: [...pages].sort((a, b) => a - b), errors };
-}
-
-// ─── FieldOverlay ──────────────────────────────────────────────────────────────
-function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, signerColor, allFields, onRemove, onMoved, scale = 1 }) {
+/* ─────────────────────────────────────────────────────────────────────────────
+   Draggable Field Overlay
+───────────────────────────────────────────────────────────────────────────── */
+function FieldOverlay({ field, signer, onRemove, onMoved }) {
+  const fieldType = FIELD_TYPES.find(f => f.value === field.field_type);
+  const color = fieldType?.color || '#7c6ef5';
   const nodeRef = useRef(null);
   const [key, setKey] = useState(0);
   const w = field.position?.width ?? field.width ?? SIGNATURE_FIELD.width;
@@ -180,176 +235,77 @@ function FieldOverlay({ field, pageRelX, pageRelY, pageW, pageH, signerName, sig
   const scaledH = Math.round(h * scale);
 
   return (
-   <Draggable
-   nodeRef={nodeRef}
-   defaultPosition={startPos}
-   bounds={{ left: 0, top: 0, right: (pageW - w) * scale, bottom: (pageH - h) * scale }}
-   key={key}
-   onStop={handleStop}
-   >
-  <div
-  ref={nodeRef}
-  className="absolute top-0 left-0 group cursor-grab active:cursor-grabbing select-none"
-  style={{ width: scaledW, zIndex: 50 }}
-  >
-  <div
-  className={classNames(
-  'w-full flex items-center justify-center gap-2 text-xs font-semibold rounded-lg border-2 transition-all hover:shadow-md',
-  signerColor.bg, signerColor.text, signerColor.border
-  )}
-  style={{ height: scaledH }}
-  >
- <GripVertical size={12} className="opacity-40 flex-shrink-0" />
- <span className="truncate">Sign — P{field.page}</span>
- </div>
- <div className={classNames('text-center truncate px-1 text-[10px] font-medium leading-tight mt-1', signerColor.text)}>
- {signerName}
- </div>
- <button
- onMouseDown={e => { e.stopPropagation(); onRemove(field.id); }}
-  className="absolute -top-2 -right-2 w-8 h-8 bg-red-500 text-white rounded-full hidden group-hover:flex items-center justify-center shadow-md z-30 hover:bg-red-600 transition-colors"
- >
- <X size={10} strokeWidth={3} />
- </button>
- </div>
- </Draggable>
- );
-}
+    <Draggable
+      nodeRef={nodeRef}
+      defaultPosition={{ x: field.position.x, y: field.position.y }}
+      bounds="parent"
+      onStop={(_, d) => onMoved(field.id, d.x, d.y)}
+    >
+      <div
+        ref={nodeRef}
+        className="absolute group de-field-overlay"
+        style={{
+          width: field.position.width,
+          height: field.position.height,
+          zIndex: 20,
+          cursor: 'move',
+          userSelect: 'none',
+        }}
+      >
+        <div style={{
+          width: '100%', height: '100%',
+          borderRadius: 6,
+          border: `2px solid ${color}`,
+          background: `${color}18`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: 4,
+          color,
+          fontSize: 11,
+          fontWeight: 600,
+          boxShadow: `0 2px 10px ${color}30`,
+        }}>
+          <span style={{ fontSize: 13 }}>{fieldType?.icon}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 2px' }}>
+            {fieldType?.label}
+          </span>
+        </div>
 
-// ─── SignerPageSelector ────────────────────────────────────────────────────────
-function SignerPageSelector({ signer, signerColor, documentId, totalPages, allFields, pageW, pageH, onApplied }) {
- const [mode, setMode] = useState(null);
- const [pageInput, setPageInput] = useState('');
- const [applying, setApplying] = useState(false);
- const [open, setOpen] = useState(false);
+        {signer && (
+          <div style={{
+            position: 'absolute', top: -8, right: -8,
+            width: 18, height: 18,
+            borderRadius: '50%',
+            background: color,
+            border: '2px solid white',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'white',
+            fontSize: 7,
+            fontWeight: 800,
+            boxShadow: `0 2px 6px ${color}60`,
+          }} title={signer.name}>
+            {getInitials(signer.name)}
+          </div>
+        )}
 
- const signerFields = allFields.filter(f => f.document_signer_id === signer.id);
- const signedPages = [...new Set(signerFields.map(f => f.page))].sort((a, b) => a - b);
- const initialized = useRef(false);
-
-  useEffect(() => {
-    if (mode === 'select' && open && !initialized.current) {
-      setPageInput(signedPages.length > 0 ? signedPages.join(', ') : '');
-      initialized.current = true;
-    }
-    if (!open) {
-      initialized.current = false;
-    }
-  }, [mode, open, signedPages]);
-
- const getDropdownLabel = () => {
- if (signerFields.length === 0) return 'Sign required on pages';
- if (signedPages.length === totalPages) return `Sign required on all ${totalPages} pages`;
- return `Sign required on pages ${signedPages.join(', ')}`;
- };
-
- const handleApply = async () => {
- let pages;
-
- if (mode === 'all') {
- pages = Array.from({ length: totalPages }, (_, i) => i + 1);
- } else if (mode === 'select') {
- const { pages: parsed, errors } = parsePageInput(pageInput, totalPages);
- if (errors.length > 0) {
- errors.forEach(e => toast.error(e));
- return;
- }
- if (parsed.length === 0) {
-    toast.error('Please enter at least one valid page number.');
- return;
- }
- pages = parsed;
- } else {
-    toast.error('Please select an option.');
- return;
- }
-
- setApplying(true);
- try {
- // Step 1: Remove ALL existing fields for this signer
- const existingFields = allFields.filter(f => f.document_signer_id === signer.id);
- 
- // Security: Validate that pages don't have overlapping fields for same signer
- const duplicatePages = pages.filter((p, i) => pages.indexOf(p) !== i);
- if (duplicatePages.length > 0) {
- toast.error(`Duplicate pages detected: ${[...new Set(duplicatePages)].join(', ')}. Please fix your input.`);
- setApplying(false);
- return;
- }
- 
- // Warn user if replacing many fields (UX improvement)
- if (existingFields.length > 0) {
- const confirmed = window.confirm(
- `This will remove ${existingFields.length} existing field${existingFields.length > 1 ? "s" : ""} for ${signer.name} and create new ones on pages ${pages.join(", ")}. Continue?`
- );
- if (!confirmed) {
- setApplying(false);
- return;
- }
- }
-
- if (existingFields.length > 0) {
- toast.loading(`Removing ${existingFields.length} old field${existingFields.length > 1 ? 's' : ''}...`, { id: 'removing' });
- 
- // Remove fields in parallel for efficiency
- const removePromises = existingFields.map(f => 
- documentApi.removeField(documentId, f.id).catch(err => {
- console.warn('Failed to remove field', f.id, err);
- return null; // Continue with others even if one fails
- })
- );
- 
- const results = await Promise.all(removePromises);
- const removedCount = results.filter(r => r !== null).length;
- 
- toast.dismiss('removing');
- 
- if (removedCount < existingFields.length) {
-  toast.error(`Deleted ${removedCount} of ${existingFields.length} fields. Some may have failed.`);
- }
- }
-
- // Step 2: Create new fields for selected pages
- const fieldsToCreate = [];
-
- for (const page of pages) {
- // Only check for overlaps with fields from OTHER signers (not the one we just removed)
- const existingOnPage = allFields.filter(f => 
- Number(f.page) === page && f.document_signer_id !== signer.id
- );
- const pos = findNonOverlappingPosition(pageW, pageH, SIGNATURE_FIELD.width, SIGNATURE_FIELD.height, existingOnPage);
-
- if (!pos) {
-  toast.error(`No space left for a signature field on page ${page}.`);
- continue;
- }
-
- fieldsToCreate.push({
- page,
- pos_x: pos.x,
- pos_y: pos.y,
- width: SIGNATURE_FIELD.width,
- height: SIGNATURE_FIELD.height,
- document_signer_id: signer.id,
- required: true,
- });
- }
-
- if (fieldsToCreate.length === 0) {
-  toast.error('Could not place any fields — all selected pages are full.');
- return;
- }
-
- // Step 3: Add new fields (bulk if multiple, single if one)
- if (fieldsToCreate.length === 1) {
- await documentApi.addField(documentId, fieldsToCreate[0]);
- } else {
- await documentApi.bulkAddFields(documentId, fieldsToCreate);
- }
-
-  toast.success(
-    `Replaced fields: ${fieldsToCreate.length} signature field${fieldsToCreate.length > 1 ? 's' : ''} now on pages ${pages.join(', ')} for ${signer.name}.`,
-    { duration: 4000 }
+        <button
+          onMouseDown={e => { e.stopPropagation(); onRemove(field.id); }}
+          className="absolute group-hover:flex hidden items-center justify-center"
+          style={{
+            top: -8, left: -8,
+            width: 18, height: 18,
+            borderRadius: '50%',
+            background: '#ef4444',
+            color: 'white',
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 2px 6px rgba(239,68,68,0.5)',
+            zIndex: 30,
+          }}
+        >
+          <X size={9} />
+        </button>
+      </div>
+    </Draggable>
   );
  
  setPageInput('');
@@ -498,18 +454,20 @@ function SignerCard({ signer, signerIndex, documentId, totalPages, allFields, pa
  );
 }
 
-// ─── AddSignerModal ────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────────
+   Add Signer Modal
+───────────────────────────────────────────────────────────────────────────── */
 function AddSignerModal({ open, onClose, documentId, onAdded }) {
-  const [tab, setTab] = useState('manual');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveContact, setSaveContact] = useState(false);
+  const [tab, setTab]         = useState('manual');
+  const [name, setName]       = useState('');
+  const [email, setEmail]     = useState('');
+  const [role, setRole]       = useState('signer');
+  const [loading, setLoading] = useState(false);
 
-  const { data: contactsData, isLoading: contactsLoading } = useQuery({
-  queryKey: ['contacts-picker'],
-  queryFn: () => contactApi.list({ per_page: 100 }),
-  enabled: open && tab === 'contacts',
+  const { data: contactsData } = useQuery({
+    queryKey: ['contacts-picker'],
+    queryFn:  () => contactApi.list({ per_page: 100 }),
+    enabled:  open && tab === 'contacts',
   });
 
   const reset = () => { setName(''); setEmail(''); setSaveContact(false); };
@@ -543,89 +501,225 @@ function AddSignerModal({ open, onClose, documentId, onAdded }) {
   }
   };
 
- return (
- <Modal open={open} onClose={() => { onClose(); reset(); }} title="Add Signer" size="sm">
- <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-5">
- <button
- onClick={() => setTab('manual')}
- className={classNames(
- 'flex-1 py-1.5 rounded-md text-xs font-medium transition-all',
- tab === 'manual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
- )}
- >
- Manual
- </button>
- <button
- onClick={() => setTab('contacts')}
- className={classNames(
- 'flex-1 py-1.5 rounded-md text-xs font-medium transition-all',
- tab === 'contacts' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
- )}
- >
- Contacts
- </button>
- </div>
+  if (!open) return null;
 
- {tab === 'manual' ? (
- <div className="space-y-4">
- <Input label="Name" value={name} onChange={e => setName(e.target.value)} placeholder="Jane Doe" autoFocus />
-  <Input label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jane@example.com" />
-  <label className="flex items-center gap-2 cursor-pointer select-none">
-    <input
-      type="checkbox"
-      checked={saveContact}
-      onChange={e => setSaveContact(e.target.checked)}
-      className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-    />
-    <span className="text-xs text-gray-600">Save as contact</span>
-  </label>
-  <Button className="w-full" loading={saving} disabled={!name.trim() || !email.trim()} onClick={() => add({ name: name.trim(), email: email.trim() })}>
- <Plus size={14} /> Add Signer
- </Button>
- </div>
- ) : (
- <div className="space-y-1 max-h-72 overflow-y-auto">
- {contactsLoading ? (
- <div className="flex justify-center py-10"><Spinner /></div>
- ) : !contactsData?.data?.length ? (
- <div className="text-center py-10">
- <UserPlus size={28} className="mx-auto text-gray-200 mb-3" />
- <p className="text-xs text-gray-400">No contacts found</p>
- </div>
- ) : (
- contactsData.data.map(c => (
- <button
- key={c.id}
- onClick={() => add({ name: c.full_name, email: c.email, contact_id: c.id })}
- className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left"
- >
- <div className="w-8 h-8 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-semibold text-xs">
- {c.initials}
- </div>
- <div className="flex-1 min-w-0">
- <p className="text-sm font-medium text-gray-900 truncate">{c.full_name}</p>
- <p className="text-xs text-gray-400 truncate">{c.email}</p>
- </div>
- <Plus size={14} className="text-gray-300" />
- </button>
- ))
- )}
- </div>
- )}
- </Modal>
- );
+  return (
+    <Modal open={open} onClose={() => { onClose(); reset(); }} title="">
+      <style>{`
+        .de-modal-input {
+          width: 100%;
+          background: #0f1117;
+          border: 1px solid #1e2130;
+          border-radius: 10px;
+          padding: 10px 14px;
+          font-size: 13px;
+          font-family: var(--font-body);
+          color: #f4f3f0;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+        .de-modal-input::placeholder { color: #4a4f65; }
+        .de-modal-input:focus { border-color: #7c6ef5; box-shadow: 0 0 0 3px rgba(124,110,245,0.12); }
+      `}</style>
+
+      <div style={{ padding: '4px 0' }}>
+        {/* Title */}
+        <div style={{ marginBottom: 20 }}>
+          <h2 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 22,
+            fontWeight: 400,
+            color: '#f4f3f0',
+            marginBottom: 4,
+          }}>
+            Add Signer
+          </h2>
+          <p style={{ fontSize: 12, color: '#8b8fa8' }}>
+            Who needs to sign or review this document?
+          </p>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', gap: 4,
+          background: '#0a0c12',
+          borderRadius: 10, padding: 4,
+          marginBottom: 20,
+          border: '1px solid #1e2130',
+        }}>
+          {[
+            { id: 'manual', label: 'Add Manually' },
+            { id: 'contacts', label: 'From Contacts' },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="de-tab-pill"
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: 'var(--font-body)',
+                background: tab === t.id ? '#1e2130' : 'transparent',
+                color: tab === t.id ? '#f4f3f0' : '#4a4f65',
+                boxShadow: tab === t.id ? '0 2px 8px rgba(0,0,0,0.3)' : 'none',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'manual' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#8b8fa8', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Full Name
+              </label>
+              <input
+                className="de-modal-input"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Full Name"
+                autoFocus
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#8b8fa8', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Email Address
+              </label>
+              <input
+                className="de-modal-input"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="email@123company.com"
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#8b8fa8', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                Role
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                {SIGN_ROLES.map(r => (
+                  <button
+                    key={r.value}
+                    onClick={() => setRole(r.value)}
+                    style={{
+                      padding: '9px 8px',
+                      borderRadius: 9,
+                      border: `1.5px solid ${role === r.value ? '#7c6ef5' : '#1e2130'}`,
+                      background: role === r.value ? 'rgba(124,110,245,0.12)' : 'transparent',
+                      color: role === r.value ? '#a89af9' : '#4a4f65',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      fontFamily: 'var(--font-body)',
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease',
+                    }}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={() => addSigner({ name: name.trim(), email: email.trim(), sign_role: role })}
+              disabled={!name.trim() || !email.trim() || loading}
+              style={{
+                marginTop: 4,
+                padding: '11px 20px',
+                borderRadius: 10,
+                border: 'none',
+                background: 'linear-gradient(135deg, #7c6ef5 0%, #5a4fcf 100%)',
+                color: 'white',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'var(--font-body)',
+                cursor: !name.trim() || !email.trim() || loading ? 'not-allowed' : 'pointer',
+                opacity: !name.trim() || !email.trim() ? 0.45 : 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: '0 4px 16px rgba(124,110,245,0.35)',
+                transition: 'all 0.2s',
+              }}
+            >
+              {loading ? (
+                <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              ) : (
+                <><UserPlus size={14} /> Add Signer</>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+            {!contactsData?.data?.length ? (
+              <div style={{ textAlign: 'center', padding: '32px 0', color: '#4a4f65', fontSize: 13 }}>
+                No contacts found
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(contactsData.data).map(c => (
+                  <div
+                    key={c.id}
+                    className="de-contact-row"
+                    onClick={() => addSigner({ name: c.full_name, email: c.email, sign_role: c.sign_role, contact_id: c.id })}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 10,
+                      border: '1px solid #1e2130',
+                      background: '#0a0c12',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #7c6ef5, #5a4fcf)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: 'white', fontSize: 11, fontWeight: 700,
+                      flexShrink: 0,
+                    }}>
+                      {c.initials}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#f4f3f0', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.full_name}
+                      </p>
+                      <p style={{ fontSize: 11, color: '#4a4f65', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.email}
+                      </p>
+                    </div>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      padding: '3px 8px', borderRadius: 20,
+                      background: 'rgba(124,110,245,0.12)', color: '#a89af9',
+                      border: '1px solid rgba(124,110,245,0.2)',
+                    }}>
+                      {c.role_label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
 }
 
-// ─── SendPanel ─────────────────────────────────────────────────────────────────
-function SendPanel({ documentId, onSent }) {
-  const [result, setResult] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [expiredError, setExpiredError] = useState(false);
-
-  const handleSend = async () => {
-    setIsProcessing(true);
-    setExpiredError(false);
-    setResult(null);
+/* ─────────────────────────────────────────────────────────────────────────────
+   Send Panel
+───────────────────────────────────────────────────────────────────────────── */
+function SendPanel({ documentId, isSendable, onSent }) {
+  const [result, setResult]         = useState(null);
+  const [validating, setValidating] = useState(false);
+  const [sending, setSending]       = useState(false);
 
     try {
       const res = await documentApi.validate(documentId);
@@ -657,68 +751,93 @@ function SendPanel({ documentId, onSent }) {
   };
 
   return (
-    <div className="space-y-2">
-      {expiredError && (
-        <div className="rounded-lg p-3 text-xs flex items-start gap-2 bg-red-50 text-red-700 border border-red-100">
-          <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium">Document has expired</p>
-            <p className="text-[11px] opacity-80 mt-1">The expiry date has passed. Please update it in the document settings above, then try again.</p>
-          </div>
-        </div>
-      )}
-      {result && !expiredError && (
-        <div className={classNames(
-          'rounded-lg p-3 text-xs flex items-start gap-2',
-          'bg-red-50 text-red-700 border border-red-100'
-        )}>
-          <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium mb-1">Issues found</p>
-            <ul className="space-y-0.5 list-disc pl-4 text-[11px] opacity-80">
-              {result.errors.map((e, i) => <li key={i}>{e}</li>)}
-            </ul>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <button
+        className="de-validate-btn"
+        onClick={runValidate}
+        disabled={validating}
+        style={{
+          width: '100%', padding: '9px 16px',
+          borderRadius: 9, cursor: 'pointer',
+          fontSize: 12, fontWeight: 600,
+          fontFamily: 'var(--font-body)',
+          color: '#8b8fa8',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+          transition: 'all 0.2s',
+        }}
+      >
+        {validating ? (
+          <div style={{ width: 13, height: 13, border: '1.5px solid rgba(139,143,168,0.3)', borderTopColor: '#8b8fa8', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        ) : (
+          <><CheckCircle size={13} /> Validate Document</>
+        )}
+      </button>
+
+      {result && (
+        <div
+          className="de-animate-up"
+          style={{
+            borderRadius: 10, padding: '10px 12px',
+            background: result.valid ? 'rgba(52,211,153,0.08)' : 'rgba(248,113,113,0.08)',
+            border: `1px solid ${result.valid ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}`,
+          }}
+        >
+          {result.valid ? (
+            <p style={{ fontSize: 12, color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle size={13} /> Ready to send
+            </p>
+          ) : (
+            <div>
+              <p style={{ fontSize: 12, color: '#f87171', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <AlertCircle size={13} /> Fix these issues
+              </p>
+              <ul style={{ paddingLeft: 16, margin: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {result.errors.map((e, i) => (
+                  <li key={i} style={{ fontSize: 11, color: '#f87171', opacity: 0.85 }}>{e}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
-      <Button className="w-full" size="sm" loading={isProcessing} disabled={expiredError} onClick={handleSend}>
-        <Send size={14} /> Send
-      </Button>
+      <button
+        className="de-send-btn"
+        onClick={runSend}
+        disabled={!result?.valid || sending}
+        style={{
+          width: '100%', padding: '11px 16px',
+          borderRadius: 10, border: 'none',
+          cursor: !result?.valid || sending ? 'not-allowed' : 'pointer',
+          fontSize: 13, fontWeight: 600,
+          fontFamily: 'var(--font-body)',
+          color: 'white',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}
+      >
+        {sending ? (
+          <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+        ) : (
+          <><Send size={13} /> Send to Signers</>
+        )}
+      </button>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-// ─── DocumentEditorPage ────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────────
+   Main Page
+───────────────────────────────────────────────────────────────────────────── */
 export default function DocumentEditorPage() {
  const { id } = useParams();
  const navigate = useNavigate();
  const queryClient = useQueryClient();
 
-  const [signerModal, setSignerModal] = useState(false);
-  const [totalPages, setTotalPages] = useState(1);
-  const [pagesInfo, setPagesInfo] = useState({});
-  const pdfContainerRef = useRef(null);
-  const [scale, setScale] = useState(1);
-
-  const recalcScale = useCallback(() => {
-    if (pdfContainerRef.current) {
-      const info = pagesInfo[1] || { width: DEFAULT_PAGE_W };
-      const available = pdfContainerRef.current.clientWidth;
-      setScale(Math.min(1, available / info.width));
-    }
-  }, [pagesInfo]);
-
-  useEffect(() => {
-    recalcScale();
-  }, [pagesInfo, recalcScale]);
-
-  useEffect(() => {
-    const onResize = () => recalcScale();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [recalcScale]);
-
+  const [signerModal, setSignerModal]       = useState(false);
+  const [activeSigner, setActiveSigner]     = useState(null);
+  const [activeFieldType, setActiveFieldType] = useState(null);
 
   const { data, isLoading, refetch } = useQuery({
   queryKey: ['document', id],
@@ -727,44 +846,61 @@ export default function DocumentEditorPage() {
 
   const doc = data?.data?.document;
 
-  const [minExpiryTime] = useState(() => Date.now() + 60 * 60 * 1000);
+  if (!isLoading && doc && !doc.is_editable) {
+    navigate(`/dashboard/documents/${id}`, { replace: true });
+    return null;
+  }
 
-  const [expiryDateTime, setExpiryDateTime] = useState(null);
-  useEffect(() => {
-    if (doc?.expires_at) {
-      setExpiryDateTime(new Date(doc.expires_at));
-    }
-  }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleExpiryChange = useCallback(async (date) => {
-    setExpiryDateTime(date);
-    if (!date) return;
+  const handleCanvasClick = useCallback(async (e) => {
+    if (!activeFieldType || !canvasRef.current) return;
+    const rect   = canvasRef.current.getBoundingClientRect();
+    const config = FIELD_TYPES.find(f => f.value === activeFieldType);
+    const posX   = Math.max(0, Math.round(e.clientX - rect.left - config.w / 2));
+    const posY   = Math.max(0, Math.round(e.clientY - rect.top  - config.h / 2));
     try {
-      const saveVal = date.toISOString().slice(0, 19).replace('T', ' ');
-      await documentApi.update(id, { expires_at: saveVal });
+      await documentApi.addField(id, {
+        field_type:         activeFieldType,
+        page:               1,
+        pos_x:              posX,
+        pos_y:              posY,
+        width:              config.w,
+        height:             config.h,
+        document_signer_id: activeFieldType === 'company_seal' ? null : (activeSigner?.id || null),
+        required:           true,
+      });
       refetch();
+      toast.success(`${config.label} placed.`);
     } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to place field.');
+    }
+  }, [activeFieldType, activeSigner, id, refetch]);
+
+  const handleFieldMoved = useCallback(async (fieldId, x, y) => {
+    try {
+      await documentApi.updateField(id, fieldId, { pos_x: Math.round(x), pos_y: Math.round(y) });
       refetch();
       toast.error(err?.response?.data?.error?.message || 'Failed to update expiry date.');
     }
   }, [id, refetch]);
 
- useEffect(() => {
- if (!isLoading && doc && !doc.is_editable)
- navigate(`/dashboard/documents/${id}`, { replace: true });
- }, [isLoading, doc, id, navigate]);
+  const handleRemoveField = useCallback(async (fieldId) => {
+    try {
+      await documentApi.removeField(id, fieldId);
+      refetch();
+      toast.success('Field removed.');
+    } catch {
+      toast.error('Failed to remove field.');
+    }
+  }, [id, refetch]);
 
- const onDocumentLoadSuccess = useCallback((pdfProxy) => {
- setTotalPages(pdfProxy.numPages);
- }, []);
-
- const onPageLoadSuccess = useCallback((page) => {
-  const viewport = page.getViewport({ scale: SCREEN_DPI / PDF_POINTS_INCH });
-  setPagesInfo(prev => ({
-    ...prev,
-    [page.pageNumber]: {
-      width: Math.round(viewport.width),
-      height: Math.round(viewport.height)
+  const handleRemoveSigner = useCallback(async (signerId) => {
+    try {
+      await documentApi.removeSigner(id, signerId);
+      if (activeSigner?.id === signerId) setActiveSigner(null);
+      refetch();
+      toast.success('Signer removed.');
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Failed to remove signer.');
     }
   }));
  }, []);
@@ -793,93 +929,97 @@ export default function DocumentEditorPage() {
  }
  }, [id, refetch]);
 
- const handleRemoveSigner = useCallback(async (signerId) => {
- try {
- await documentApi.removeSigner(id, signerId);
- refetch();
-  toast.success('Signer deleted.');
- } catch (err) {
-  toast.error(err?.response?.data?.error?.message || 'Failed to delete signer.');
- }
- }, [id, refetch]);
+  const signerPalette = ['#7c6ef5','#06b6d4','#10b981','#f59e0b','#ec4899','#f97316'];
+  const isPlacing = !!activeFieldType;
 
- if (isLoading) return (
- <div className="flex flex-col items-center justify-center h-screen gap-4 bg-gray-50">
- <Spinner size="lg" />
- <p className="text-sm text-gray-500">Loading document...</p>
- </div>
- );
-
- if (!doc) return (
- <div className="flex items-center justify-center h-screen bg-gray-50 text-gray-500">
- Document not found
- </div>
- );
-
-  const signers = doc.signers || [];
-  const fields = doc.fields || [];
-  const pdfUrl = doc.file?.preview_url ?? doc.file?.original_url;
-
-  // ── Desktop sidebar (shared) ────────────────────────────────────────────────
-  const sidebarHeader = (
-    <div className="px-5 py-4 border-b border-gray-100">
-      <button
-        onClick={() => navigate(`/dashboard/documents/${id}`)}
-        className="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-700 mb-3 group"
-      >
-        <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform" />
-        Back
-      </button>
-      <h1 className="text-base font-semibold text-gray-900 truncate">{doc.title}</h1>
-      <div className="flex items-center gap-2 mt-2">
-        <span className="text-xs text-gray-400">{totalPages} pages</span>
-        <span className="text-gray-300">·</span>
-        <Badge variant="indigo" size="xs">{doc.signing_mode}</Badge>
-        <span className="text-xs text-gray-400">{doc.status_label}</span>
-      </div>
+  if (isLoading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0f1117' }}>
+      <div style={{ width: 32, height: 32, border: '3px solid #1e2130', borderTopColor: '#7c6ef5', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
-  const expirySection = (
-    <div className="px-5 py-3 border-b border-gray-100">
-      <label className="text-xs font-medium text-gray-500 flex items-center gap-1.5 mb-1.5">
-        <Clock size={12} /> Expiry Date
-      </label>
-      <DatePicker
-        selected={expiryDateTime}
-        onChange={handleExpiryChange}
-        showTimeSelect
-        timeFormat="h:mm aa"
-        timeIntervals={30}
-        dateFormat="MMM d, yyyy h:mm aa"
-        minDate={new Date()}
-        placeholderText="Set expiry date & time"
-        locale={enUS}
-        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 text-gray-900"
-        wrapperClassName="w-full"
-        calendarClassName="shadow-xl border-gray-200"
-        popperClassName="z-50"
-      />
+  if (!doc) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0f1117', color: '#4a4f65', fontSize: 14 }}>
+      Document not found.
     </div>
   );
 
-  const signersSection = (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-      <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-medium text-gray-500">Signers</p>
-        <button
-          onClick={() => setSignerModal(true)}
-          className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
-        >
-          <UserPlus size={13} /> Add
-        </button>
-      </div>
+  return (
+    <div className="de-page" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <FontLink />
+      <GlobalStyle />
 
-      {signers.length === 0 ? (
-        <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
-          <UserPlus size={24} className="mx-auto text-gray-300 mb-2" />
-          <p className="text-xs text-gray-400 mb-3">Add a signer to start</p>
-          <Button size="sm" variant="secondary" onClick={() => setSignerModal(true)}>Add Signer</Button>
+      {/* ── Sidebar ─────────────────────────────────────────────────────── */}
+      <aside style={{
+        width: 280,
+        flexShrink: 0,
+        background: 'var(--sidebar-bg)',
+        borderRight: '1px solid var(--sidebar-border)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+
+        {/* Header */}
+        <div style={{ padding: '18px 20px 16px', borderBottom: '1px solid var(--sidebar-border)' }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              fontSize: 11, fontWeight: 500, color: '#4a4f65',
+              background: 'none', border: 'none', cursor: 'pointer',
+              marginBottom: 14, padding: 0,
+              transition: 'color 0.15s',
+              fontFamily: 'var(--font-body)',
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#8b8fa8'}
+            onMouseLeave={e => e.currentTarget.style.color = '#4a4f65'}
+          >
+            <ArrowLeft size={12} /> Back
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={{
+              width: 36, height: 36,
+              borderRadius: 9,
+              background: 'linear-gradient(135deg, rgba(124,110,245,0.2), rgba(90,79,207,0.1))',
+              border: '1px solid rgba(124,110,245,0.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Zap size={16} color="#7c6ef5" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 15,
+                fontWeight: 400,
+                color: 'var(--text-primary)',
+                marginBottom: 3,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }} title={doc.title}>
+                {doc.title}
+              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: '#4a4f65',
+                }}>
+                  {doc.signing_mode}
+                </span>
+                <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#4a4f65' }} />
+                <span style={{
+                  fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: '#7c6ef5',
+                }}>
+                  {doc.status_label}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="space-y-2">
@@ -905,149 +1045,302 @@ export default function DocumentEditorPage() {
     </div>
   );
 
-  const sendSection = (
-    <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/50">
-      <SendPanel documentId={id} onSent={() => {
-        queryClient.invalidateQueries({ queryKey: ['documents'] });
-        navigate(`/dashboard/documents/${id}`);
-      }} />
-    </div>
-  );
+        {/* Scrollable body */}
+        <div className="de-sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 0' }}>
 
-  // ── PDF canvas with fields ──────────────────────────────────────────────────
-  const pdfCanvas = (
-    <div ref={pdfContainerRef} className="w-full max-w-[794px]">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 rounded-lg mb-4 bg-white border border-gray-200 shadow-sm">
-        <p className="hidden sm:block text-xs text-gray-400">Drag fields to reposition</p>
-        {fields.length > 0 && (
-          <span className="text-xs font-medium text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">
-            {fields.length} field{fields.length > 1 ? 's' : ''} placed
-          </span>
-        )}
-      </div>
-
-      {/* PDF Pages */}
-      <div className="relative">
-        {pdfUrl ? (
-          <Document
-            file={pdfUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            loading={
-              <div className="flex flex-col items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
-                <Spinner size="lg" />
-                <p className="text-xs text-gray-400 mt-3">Loading PDF...</p>
-              </div>
-            }
-          >
-            {Array.from({ length: totalPages }, (_, i) => {
-              const info = pagesInfo[i + 1] || { width: DEFAULT_PAGE_W, height: DEFAULT_PAGE_H };
-              const pageW = Math.round(info.width * scale);
-              return (
-                <div key={i} className="relative mb-4">
-                  <div className="shadow-lg">
-                    <Page
-                      pageNumber={i + 1}
-                      width={pageW}
-                      onLoadSuccess={onPageLoadSuccess}
-                      renderAnnotationLayer={false}
-                      renderTextLayer={false}
-                      className="rounded-lg overflow-hidden bg-white"
-                    />
-                  </div>
-
-                  {/* Field overlays */}
-                  {fields.filter(f => Number(f.page) === i + 1).map(field => {
-                    const signerIdx = signers.findIndex(s => s.id === field.document_signer_id);
-                    const color = SIGNER_COLORS[Math.max(0, signerIdx) % SIGNER_COLORS.length];
-                    const signer = signers[signerIdx];
-                    const pos = field.position || {};
-                    const absX = pos.x ?? field.pos_x ?? 0;
-                    const pageRelY = pos.y ?? field.pos_y ?? 0;
-
-                    return (
-                      <FieldOverlay
-                        key={field.id}
-                        field={field}
-                        pageRelX={absX}
-                        pageRelY={pageRelY}
-                        scale={scale}
-                        pageW={info.width}
-                        pageH={info.height}
-                        signerName={signer?.name ?? 'Signer'}
-                        signerColor={color}
-                        allFields={fields.filter(f => Number(f.page) === i + 1)}
-                        onRemove={handleRemoveField}
-                        onMoved={(fId, x, y) => handleFieldMoved(fId, x, y, i)}
-                      />
-                    );
-                  })}
-
-                  {/* Page separator */}
-                  {i < totalPages - 1 && (
-                    <div className="flex items-center justify-center py-2">
-                      <span className="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-200">
-                        Page {i + 2}
-                      </span>
+          {/* ── Field Palette ──────────────────────────────────────────── */}
+          <section style={{ marginBottom: 24 }}>
+            <SectionLabel>Fields</SectionLabel>
+            <p style={{ fontSize: 11, color: '#4a4f65', marginBottom: 12, lineHeight: 1.5 }}>
+              Select a field type, then click on the document to place it.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {FIELD_TYPES.map(ft => {
+                const isActive = activeFieldType === ft.value;
+                return (
+                  <button
+                    key={ft.value}
+                    className={`de-field-btn ${isActive ? 'active' : ''}`}
+                    onClick={() => setActiveFieldType(prev => prev === ft.value ? null : ft.value)}
+                    style={{
+                      width: '100%',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '9px 12px',
+                      borderRadius: 9,
+                      border: `1.5px solid ${isActive ? 'var(--accent)' : 'var(--sidebar-border)'}`,
+                      background: isActive ? 'rgba(124,110,245,0.1)' : 'transparent',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 7,
+                      background: `${ft.color}18`,
+                      border: `1px solid ${ft.color}35`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14, flexShrink: 0,
+                    }}>
+                      {ft.icon}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </Document>
-        ) : (
-          <div className="flex items-center justify-center bg-white rounded-xl shadow-lg border border-gray-200" style={{ height: DEFAULT_PAGE_H }}>
-            <p className="text-xs text-gray-400">No preview available</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+                    <span style={{
+                      fontSize: 12, fontWeight: 500,
+                      color: isActive ? '#c4b8ff' : '#8b8fa8',
+                      flex: 1,
+                    }}>
+                      {ft.label}
+                    </span>
+                    {isActive && (
+                      <span style={{ fontSize: 10, color: '#7c6ef5', fontWeight: 600 }}>
+                        Click →
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* ── Desktop sidebar (md+) ── */}
-      <div className="hidden md:flex w-80 flex-shrink-0 flex-col overflow-hidden bg-white border-r border-gray-200 z-20">
-        <div className="flex flex-col h-full bg-white">
-          {sidebarHeader}
-          {expirySection}
-          {signersSection}
-          {sendSection}
+            {/* Context chip */}
+            {activeSigner && activeFieldType && (
+              <div className="de-animate-up" style={{
+                marginTop: 10, padding: '8px 12px',
+                borderRadius: 9,
+                background: 'rgba(124,110,245,0.08)',
+                border: '1px solid rgba(124,110,245,0.2)',
+              }}>
+                <p style={{ fontSize: 11, color: '#a89af9', fontWeight: 500 }}>
+                  Assigning to: <strong style={{ color: '#c4b8ff' }}>{activeSigner.name}</strong>
+                </p>
+              </div>
+            )}
+            {!activeSigner && activeFieldType && activeFieldType !== 'company_seal' && (
+              <div className="de-animate-up" style={{
+                marginTop: 10, padding: '8px 12px',
+                borderRadius: 9,
+                background: 'rgba(251,191,36,0.07)',
+                border: '1px solid rgba(251,191,36,0.2)',
+              }}>
+                <p style={{ fontSize: 11, color: '#fbbf24', fontWeight: 500 }}>
+                  Select a signer below to assign this field.
+                </p>
+              </div>
+            )}
+          </section>
+
+          <Divider />
+
+          {/* ── Signers ────────────────────────────────────────────────── */}
+          <section style={{ marginTop: 20, marginBottom: 24 }}>
+            <SectionLabel
+              action={
+                <button
+                  onClick={() => setSignerModal(true)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    fontSize: 11, fontWeight: 600, color: '#7c6ef5',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-body)',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#a89af9'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#7c6ef5'}
+                >
+                  <UserPlus size={11} /> Add
+                </button>
+              }
+            >
+              Signers
+            </SectionLabel>
+
+            {(doc.signers || []).length === 0 ? (
+              <button
+                onClick={() => setSignerModal(true)}
+                style={{
+                  width: '100%',
+                  padding: '20px 16px',
+                  borderRadius: 10,
+                  border: '1.5px dashed var(--sidebar-border)',
+                  background: 'transparent',
+                  color: '#4a4f65',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-body)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: 6,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#7c6ef5'; e.currentTarget.style.color = '#7c6ef5'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--sidebar-border)'; e.currentTarget.style.color = '#4a4f65'; }}
+              >
+                <UserPlus size={20} />
+                <span>Add first signer</span>
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {(doc.signers || []).map((s, i) => {
+                  const isActive = activeSigner?.id === s.id;
+                  const color = signerPalette[i % signerPalette.length];
+                  return (
+                    <div
+                      key={s.id}
+                      className={`de-signer-card ${isActive ? 'active' : ''}`}
+                      onClick={() => setActiveSigner(prev => prev?.id === s.id ? null : s)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 10px 10px 12px',
+                        borderRadius: 10,
+                        border: `1.5px solid ${isActive ? color + '60' : 'var(--sidebar-border)'}`,
+                        background: isActive ? `${color}0d` : 'var(--panel-bg)',
+                      }}
+                    >
+                      <Avatar name={s.name} color={color} size={30} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 1 }}>
+                          {s.name}
+                        </p>
+                        <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                          {s.sign_role}
+                        </p>
+                      </div>
+                      {doc.signing_mode === 'sequential' && s.signing_order && (
+                        <div style={{
+                          width: 20, height: 20, borderRadius: '50%',
+                          background: '#1e2130',
+                          color: '#8b8fa8',
+                          fontSize: 10, fontWeight: 700, fontFamily: 'monospace',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>
+                          {s.signing_order}
+                        </div>
+                      )}
+                      <button
+                        onMouseDown={e => { e.stopPropagation(); handleRemoveSigner(s.id); }}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: '#3a3f52', padding: 3, borderRadius: 5,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'color 0.15s',
+                          flexShrink: 0,
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#3a3f52'}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         </div>
-      </div>
 
-      {/* ── Main area ── */}
-      <div className="flex-1 min-w-0 overflow-y-auto md:overflow-hidden md:flex md:flex-col">
-        {/* Mobile header */}
-        <div className="md:hidden sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-2.5 flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/dashboard/documents/${id}`)}
-            className="p-2 -ml-2 rounded-lg text-gray-400 hover:bg-gray-100 active:bg-gray-200 transition-colors"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{doc.title}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs text-gray-400">{totalPages} pages</span>
-              <Badge variant="indigo" size="xs">{doc.signing_mode}</Badge>
+        {/* ── Send Panel (sticky footer) ──────────────────────────────── */}
+        <div style={{
+          padding: '16px 20px 20px',
+          borderTop: '1px solid var(--sidebar-border)',
+          background: 'var(--sidebar-bg)',
+        }}>
+          <SendPanel
+            documentId={id}
+            isSendable={doc.is_sendable}
+            onSent={() => {
+              queryClient.invalidateQueries({ queryKey: ['documents'] });
+              navigate(`/dashboard/documents/${id}`);
+            }}
+          />
+        </div>
+      </aside>
+
+      {/* ── Canvas ──────────────────────────────────────────────────────── */}
+      <main
+        className="de-canvas-grid"
+        style={{
+          flex: 1,
+          overflowAuto: 'auto',
+          overflow: 'auto',
+          display: 'flex',
+          justifyContent: 'center',
+          padding: 48,
+          cursor: isPlacing ? 'crosshair' : 'default',
+        }}
+      >
+        <div
+          ref={canvasRef}
+          style={{
+            position: 'relative',
+            width: 794,
+            minHeight: 1123,
+            background: 'white',
+            boxShadow: '0 24px 80px rgba(0,0,0,0.2), 0 4px 16px rgba(0,0,0,0.12)',
+            borderRadius: 3,
+          }}
+          onClick={handleCanvasClick}
+        >
+          {/* PDF preview */}
+          <iframe
+            src={`${doc.file?.original_url}#toolbar=0&navpanes=0&scrollbar=0`}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              border: 'none', pointerEvents: 'none',
+              borderRadius: 3,
+            }}
+            title="Document Preview"
+          />
+
+          {/* Click-capture layer */}
+          {isPlacing && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10,
+              cursor: 'crosshair',
+              background: 'rgba(124,110,245,0.03)',
+              borderRadius: 3,
+            }} />
+          )}
+
+          {/* Field overlays */}
+          {(doc.fields || []).map(field => {
+            const signer = (doc.signers || []).find(s => s.id === field.document_signer_id);
+            return (
+              <FieldOverlay
+                key={field.id}
+                field={field}
+                signer={signer}
+                onRemove={handleRemoveField}
+                onMoved={handleFieldMoved}
+              />
+            );
+          })}
+
+          {/* Placement hint */}
+          {isPlacing && (
+            <div
+              className="de-placement-hint"
+              style={{
+                position: 'absolute', bottom: 20,
+                left: '50%', transform: 'translateX(-50%)',
+                color: 'white', fontSize: 12, fontWeight: 600,
+                padding: '9px 20px', borderRadius: 100,
+                pointerEvents: 'none', zIndex: 30,
+                whiteSpace: 'nowrap',
+                fontFamily: 'var(--font-body)',
+                letterSpacing: '0.02em',
+              }}
+            >
+              Click to place {FIELD_TYPES.find(f => f.value === activeFieldType)?.label} · Esc to cancel
             </div>
           </div>
         </div>
+      </main>
 
-        {/* PDF canvas - mobile card with independent scroll */}
-        <div className="md:hidden h-[75vh] bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-0 mx-3 mt-3">
-          <div className="flex-1 overflow-y-auto py-4 min-h-0">
-            <div className="flex justify-center px-3">
-              {pdfCanvas}
-            </div>
-          </div>
-        </div>
-
-        {/* PDF canvas - desktop */}
-        <div className="hidden md:flex justify-center py-8 px-8 bg-gray-100/50 flex-1 overflow-y-auto">
-          {pdfCanvas}
-        </div>
+      {/* Keyboard: Esc to cancel */}
+      <div
+        tabIndex={-1}
+        onKeyDown={e => { if (e.key === 'Escape') setActiveFieldType(null); }}
+        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+      />
 
         {/* Mobile controls - styled cards */}
         <div className="md:hidden space-y-3 px-3 pb-8 mt-3">

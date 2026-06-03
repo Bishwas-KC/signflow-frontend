@@ -7,11 +7,8 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { getInitials } from '@/utils/helpers';
-import {
-  UserPlus, Users, Search, Trash2, Edit3, Mail, Briefcase, Phone,
-  ChevronLeft, ChevronRight, LayoutGrid, List
-} from 'lucide-react';
+import { SIGN_ROLES } from '@/utils/constants';
+import { UserPlus, Users, Search, Trash2, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { keepPreviousData } from '@tanstack/react-query';
 

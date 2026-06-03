@@ -21,56 +21,6 @@ import {
 } from 'lucide-react';
 import { useForm, Controller } from 'react-hook-form';
 import toast from 'react-hot-toast';
-import { keepPreviousData } from '@tanstack/react-query';
-
-const STATUS_CONFIG = {
-  draft: { icon: FileText, color: 'text-gray-500', bg: 'bg-gray-100' },
-  pending: { icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
-  in_progress: { icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-  completed: { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
-  cancelled: { icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
-  declined: { icon: XCircle, color: 'text-pink-500', bg: 'bg-pink-50' },
-  expired: { icon: XCircle, color: 'text-orange-500', bg: 'bg-orange-50' },
-  deleted: { icon: Trash2, color: 'text-gray-500', bg: 'bg-gray-100' },
-};
-
-// ── Quick Stats Bar ──────────────────────────────────────────────────────
-
-function QuickStats({ docs }) {
-  const counts = useMemo(() => {
-    const m = {};
-    docs.forEach((d) => { m[d.status] = (m[d.status] || 0) + 1; });
-    return m;
-  }, [docs]);
-
-  const statItems = [
-    { key: 'in_progress', label: 'In Progress', icon: AlertCircle, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { key: 'completed', label: 'Completed', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
-    { key: 'draft', label: 'Drafts', icon: FileText, color: 'text-gray-500', bg: 'bg-gray-100' },
-  ];
-
-  return (
-    <div className="flex items-center gap-3 flex-wrap">
-      {statItems.map((item) => {
-        const count = counts[item.key] || 0;
-        if (count === 0) return null;
-        const Icon = item.icon;
-        return (
-          <div key={item.key} className={`inline-flex items-center gap-2 px-3 py-1.5 ${item.bg} rounded-xl`}>
-            <Icon size={14} className={item.color} />
-            <span className="text-xs font-bold text-gray-700">{count}</span>
-            <span className="text-xs text-gray-500 font-medium">{item.label}</span>
-          </div>
-        );
-      })}
-      <div className="text-xs text-gray-400 ml-auto">
-        {docs.length} total
-      </div>
-    </div>
-  );
-}
-
-// ── New Document Modal ────────────────────────────────────────────────────
 
 function NewDocumentModal({ open, onClose }) {
   const navigate = useNavigate();
@@ -91,32 +41,16 @@ function NewDocumentModal({ open, onClose }) {
     mutationFn: ({ data, file }) => documentApi.create(data, file),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
-      toast.success('Document uploaded. Now add signers and place fields.');
+      toast.success(res.message||'Document uploaded! Now add signers and place fields.');
       onClose();
       reset();
-      navigate(`/dashboard/documents/${res.data.document.id}/editor`);
+      setFile(null);
+      navigate(`/dashboard/documents/${res.data.id}/editor`);
     },
     onError: (err) => {
-      const errorData = err.response?.data;
-      const fileError = errorData?.error?.errors?.file?.[0];
-      toast.error(fileError || errorData?.error?.message || 'Upload failed.');
+      toast.error(err.response?.data?.error?.message || 'Upload failed.');
     },
   });
-
-  const handleClose = () => {
-    if (isDirty) {
-      setConfirmClose(true);
-    } else {
-      reset();
-      onClose();
-    }
-  };
-
-  const handleConfirmClose = () => {
-    setConfirmClose(false);
-    reset();
-    onClose();
-  };
 
   const onSubmit = (data) => {
     if (!data.file) { toast.error('Please select a file.'); return; }
@@ -144,22 +78,20 @@ function NewDocumentModal({ open, onClose }) {
             <Input label="Description (optional)" placeholder="Brief description..." {...register('description')} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="block text-sm font-bold text-gray-700">Signing Mode *</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { value: 'sequential', label: 'Sequential', desc: 'In order' },
-                  { value: 'bulk', label: 'Bulk', desc: 'Any order' },
-                ].map(m => (
-                  <label key={m.value} className="relative cursor-pointer">
-                    <input type="radio" value={m.value} {...register('signing_mode')} className="sr-only peer" />
-                    <div className="border-2 rounded-xl p-2.5 peer-checked:border-indigo-500 peer-checked:bg-indigo-50 border-gray-100 transition-all">
-                      <p className="font-bold text-sm text-gray-900">{m.label}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{m.desc}</p>
-                    </div>
-                  </label>
-                ))}
+        <div className="space-y-1">
+          <label className="block text-sm font-medium text-gray-700">Upload File * (PDF, DOC, DOCX — max 20MB)</label>
+          <div
+            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+              file ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-indigo-300'
+            }`}
+            onClick={() => document.getElementById('file-input').click()}
+          >
+            {file ? (
+              <p className="text-sm font-medium text-indigo-700">{file.name} ({formatFileSize(file.size)})</p>
+            ) : (
+              <div>
+                <FileText size={28} className="mx-auto text-gray-400 mb-2" />
+                <p className="text-sm text-gray-500">Click to select file</p>
               </div>
             </div>
 
@@ -348,9 +280,9 @@ export default function DocumentsPage() {
   }, []);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['documents', { search, status, role, page, perPage }],
-    queryFn: () => documentApi.list({ search, status, role, page, per_page: perPage }),
-    placeholderData: keepPreviousData,
+    queryKey: ['documents', { search, status, page }],
+    queryFn:  () => documentApi.list({ search, status, page, per_page: 10 }),
+    keepPreviousData: true,
   });
 
   const deleteMut = useMutation({
